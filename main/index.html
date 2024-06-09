@@ -3,14 +3,372 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Primer despliegue</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="shortcut" href="./assets/images/logos/programadorFavicon.png">
+    <title>Portfolio</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="./assets/images/logos/programadorFavicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <h1>Hola Mundo</h1>
+
+    <!--Header para agregar estilos-->
+    <header class="encabezado">
+        <nav class="navegacion">
+            <a class="navegacion__enlaces" href="#presentacion">
+                <h2 class="navegacion__titulo">Portfolio Web</h2>
+            </a>
+            <ul class="enlaces">
+                <li class="enlaces__item">
+                    <a class="enlaces__enlace" href="#presentacion">Inicio</a>
+                </li>
+                <li class="enlaces_item">
+                    <a class="enlaces__enlace" href="#sobre-mi">Sobre mi</a>
+                </li>
+                <li class="enlaces_item">
+                    <a class="enlaces__enlace" href="#proyectos">Proyectos</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="principal">
+
+        <!--seccion con contenedor generico que incluye botones e informacion sobre mi-->
+        <section class="presentacion" id="presentacion">
+            <div class="presentacion__contenedor_1">
+                <h1 class="presentacion__titulo">Soy Desarrollador de software</h1>
+                <p class="presentacion__parrafo">Soy estudiante de programación con interés en el desarrollo back-end y la seguridad informática. Aspiro a crear sistemas robustos y eficientes, contribuyendo a tecnologías seguras y de alto rendimiento.</p>
+                <div class="presentacion__contenedor_botones">
+                    <!--Este enlace lleva a mi CV para ser visualizado o descargado-->
+                    <button href="#sobre-mi" class="boton" role="button">Sobre mi</button>
+                    <button href="./assets/docs/Curriculum.pdf" target="_blank" class="boton boton_oscuro" role="button">Descargar CV</button>
+                </div>
+            </div>  
+        </section>
+
+        <!--Arriba tengo la seccion de navegacion y debajo la seccion donde me explayare acerca de mi-->
+
+        <article class="articulo sobre_mi" id="sobre-mi">
+            <h2 class="articulo__titulo">Para que me conozcan un poco!</h2>
+            <div class="articulo__contenedor_descripciones">
+                <section class="seccion_descripcion">
+                    <div class="seccion_descripcion__porta_retrato">
+                        <img
+                            src="./assets/images/profile/profilePicture.jfif"
+                            alt="Un poco de mi"
+                            title="Cataratas del Iguazu"
+                        />
+                    </div>
+                    <div
+                        class="seccion_descripcion__info scroll scroll_fino scroll_gris"
+                        aria-label="descripcion personal"
+                    >
+                        <h3 class="seccion_descripcion__titulo" id="sobre_mi_titulo">
+                            Yo antes de iniciar
+                        </h3>
+                        <p
+                            class="seccion_descripcion__parrafo"
+                            aria-label="Detalles de mi historia"
+                            aria-describedby="sobre_mi_titulo"
+                        >
+                        Lorem ipsum dolor sit amet consectetur adipisicing elit. 
+                        Praesentium cumque mollitia cupiditate, velit neque iusto tempore
+                        odio sapiente, explicabo facilis doloremque, vitae ab quos nihil. 
+                        Fugit magnam dolore reprehenderit eius!
+                        </p>
+                        <p
+                            class="seccion_descripcion__parrafo"
+                            aria-label="Detalles de mi historia"
+                            aria-describedby="sobre_mi_titulo"
+                        >
+                        Lorem ipsum dolor sit amet consectetur adipisicing elit. 
+                        Praesentium cumque mollitia cupiditate, velit neque iusto tempore
+                        odio sapiente, explicabo facilis doloremque, vitae ab quos nihil. 
+                        Fugit magnam dolore reprehenderit eius!
+                        odio sapiente, explicabo facilis doloremque, vitae ab quos nihil. 
+                        Fugit magnam dolore reprehenderit eius!
+                        </p>
+                        <p
+                            class="seccion_descripcion__parrafo"
+                            aria-label="Detalles de mi historia"
+                            aria-describedby="sobre_mi_titulo"
+                        >
+                        Lorem ipsum dolor sit amet consectetur adipisicing elit. 
+                        Praesentium cumque mollitia cupiditate, velit neque iusto tempore
+                        odio sapiente, explicabo facilis doloremque, vitae ab quos nihil. 
+                        Fugit magnam dolore reprehenderit eius!
+                        odio sapiente, explicabo facilis doloremque, vitae ab quos nihil. 
+                        Fugit magnam dolore reprehenderit eius!
+                        </p>
+                         <p
+                            class="seccion_descripcion__parrafo"
+                            aria-label="Detalles de mi historia"
+                            aria-describedby="sobre_mi_titulo"
+                        >
+                        Lorem ipsum dolor sit amet consectetur adipisicing elit. 
+                        Praesentium cumque mollitia cupiditate, velit neque iusto tempore
+                        odio sapiente, explicabo facilis doloremque, vitae ab quos nihil. 
+                        Fugit magnam dolore reprehenderit eius!
+                        odio sapiente, explicabo facilis doloremque, vitae ab quos nihil. 
+                        Fugit magnam dolore reprehenderit eius!
+                        Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
+                        Aut accusantium nesciunt, voluptatibus molestiae placeat alias 
+                        saepe inventore soluta vel eligendi mollitia dolorum, quidem dolores earum qui. 
+                        Veritatis laudantium rerum provident!
+                        </p>
+                    </div>
+                </section>
+                <section class="seccion_descripcion">
+                    <div
+                      class="seccion_descripcion__info scroll scroll_fino scroll_gris"
+                      aria-label="descripcion personal"
+                    >
+                      <h3 class="seccion_descripcion__titulo" id="mis_hobbies_titulo">
+                        Mis hobbies
+                      </h3>
+                      <p
+                        class="seccion_descripcion__parrafo"
+                        aria-label="Detalles de mis hobbies"
+                        aria-describedby="mis_hobbies_titulo"
+                      >
+                        Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                        Molestiae dolorem quasi atque deserunt odio, minima saepe
+                        delectus nemo praesentium sapiente labore excepturi quos
+                        repellat non, officiis, ea vero commodi reiciendis.
+                      </p>
+                      <p
+                        class="seccion_descripcion__parrafo"
+                        aria-label="Detalles de mis hobbies"
+                        aria-describedby="mis_hobbies_titulo"
+                      >
+                        Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                        Molestiae dolorem quasi atque deserunt odio, minima saepe
+                        delectus nemo praesentium sapiente labore excepturi quos
+                        repellat non, officiis, ea vero commodi reiciendis. Lorem ipsum
+                        dolor sit, amet consectetur adipisicing elit. Molestiae dolorem
+                        quasi atque deserunt odio, minima saepe delectus nemo
+                        praesentium sapiente labore excepturi quos repellat non,
+                        officiis, ea vero commodi reiciendis. Lorem ipsum dolor sit,
+                        amet consectetur adipisicing elit. Molestiae dolorem quasi atque
+                        deserunt odio, minima saepe delectus nemo praesentium sapiente
+                        labore excepturi quos repellat non, officiis, ea vero commodi
+                        reiciendis.
+                      </p>
+                      <p
+                        class="seccion_descripcion__parrafo"
+                        aria-label="Detalles de mis hobbies"
+                        aria-describedby="mis_hobbies_titulo"
+                      >
+                        Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                        Molestiae dolorem quasi atque deserunt odio, minima saepe
+                        delectus nemo praesentium sapiente labore excepturi quos
+                        repellat non, officiis, ea vero commodi reiciendis.
+                      </p>
+                    </div>
+                    <div class="seccion_descripcion__porta_retrato">
+                      <img
+                        class="seccion_descripcion__image"
+                        src="./assets/images/profile/programandoEnGrupo.jpg"
+                        alt="Mi fiel compañero de programacion <3"
+                        title="selfie con skoll"
+                      />
+                    </div>
+                  </section>
+            </div>
+        </article>
+
+        <!--En esta seccion es donde colocare mis futuros proyectos-->
+        <!--por ahora esta vacio pero dejare preparadas 6 secciones para ir agregandolos poco a poco-->
+
+        <article class="articulo proyectos" id="proyectos">
+            <h2 class="articulo__titulo">Mis proyectos</h2>
+            <div class="contenedor_tarjetas_grid">
+
+                <!--Proyecto 1-->
+
+              <article
+                class="tarjeta"
+                aria-label="presentacion de proyecto personal"
+              >
+                <img
+                  class="tarjeta__imagen"
+                  src="./assets/images/proyectos/desarrollo-1.jpg"
+                  alt="imagen del proyecto"
+                  title="proyecto 1"
+                />
+                <div class="tarjeta__contenido">
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_1">titulo</h3>
+                  <span class="tarjeta__divisor"></span>
+                  <p
+                    class="tarjeta__parrafo scroll scroll_fino"
+                    aria-label="descripcion de proyecto personal"
+                    aria-describedby="titulo_proyecto_1"
+                  >
+                    Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                    Inventore necessitatibus doloribus adipisci dolorum cum et
+                    quisquam dicta veniam accusamus dignissimos. Placeat eligendi
+                    nihil voluptates eos enim aperiam porro architecto et?
+                  </p>
+                  <button href="#" class="boton boton_oscuro" target="_blank">Ver proyecto</button>
+                </div>
+              </article>
+
+              <!--Proyecto 2-->
+        
+              <article
+                class="tarjeta"
+                aria-label="presentacion de proyecto personal"
+              >
+                <img
+                  class="tarjeta__imagen"
+                  src="./assets/images/proyectos/desarrollo-2.jpg"
+                  alt="imagen del proyecto"
+                  title="proyecto 2"
+                />
+                <div class="tarjeta__contenido">
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_2">titulo</h3>
+                  <span class="tarjeta__divisor"></span>
+                  <p
+                    class="tarjeta__parrafo scroll scroll_fino scroll_gris"
+                    aria-label="descripcion de proyecto personal"
+                    aria-describedby="titulo_proyecto_2"
+                  >
+                    Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                    Inventore necessitatibus doloribus adipisci dolorum cum et
+                    quisquam dicta veniam accusamus dignissimos. Placeat eligendi
+                    nihil voluptates eos enim aperiam porro architecto et?
+                  </p>
+                  <button href="#" class="boton" target="_blank">Ver proyecto</button>
+                </div>
+              </article>
+
+              <!--Proyecto 3-->
+
+              <article
+                class="tarjeta"
+                aria-label="presentacion de proyecto personal"
+              >
+                <img
+                  class="tarjeta__imagen"
+                  src="./assets/images/proyectos/desarrollo-3.jpg"
+                  alt="imagen del proyecto"
+                  title="proyecto 3"
+                />
+                <div class="tarjeta__contenido">
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_3">titulo</h3>
+                  <span class="tarjeta__divisor"></span>
+                  <p
+                    class="tarjeta__parrafo scroll scroll_fino"
+                    aria-label="descripcion de proyecto personal"
+                    aria-describedby="titulo_proyecto_3"
+                  >
+                    Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                    Inventore necessitatibus doloribus adipisci dolorum cum et
+                    quisquam dicta veniam accusamus dignissimos. Placeat eligendi
+                    nihil voluptates eos enim aperiam porro architecto et?
+                  </p>
+                  <button href="#" class="boton boton_oscuro" target="_blank">Ver proyecto</button>
+                </div>
+              </article>
+
+              <!--Proyecto 4-->
+
+              <article
+                class="tarjeta"
+                aria-label="presentacion de proyecto personal"
+              >
+                <img
+                  class="tarjeta__imagen"
+                  src="./assets/images/proyectos/desarrollo-4.jpg"
+                  alt="imagen del proyecto"
+                  title="proyecto 4"
+                />
+                <div class="tarjeta__contenido">
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_4">titulo</h3>
+                  <span class="tarjeta__divisor"></span>
+                  <p
+                    class="tarjeta__parrafo scroll scroll_fino scroll_gris"
+                    aria-label="descripcion de proyecto personal"
+                    aria-describedby="titulo_proyecto_4"
+                  >
+                    Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                    Inventore necessitatibus doloribus adipisci dolorum cum et
+                    quisquam dicta veniam accusamus dignissimos. Placeat eligendi
+                    nihil voluptates eos enim aperiam porro architecto et?
+                  </p>
+                  <button href="#" class="boton" target="_blank">Ver proyecto</button>
+                </div>
+              </article>
+
+              <!--Proyecto 5-->
+
+              <article
+                class="tarjeta"
+                aria-label="presentacion de proyecto personal"
+              >
+                <img
+                  class="tarjeta__imagen"
+                  src="./assets/images/proyectos/desarrollo-5.jpg"
+                  alt="imagen del proyecto"
+                  title="proyecto 5"
+                />
+                <div class="tarjeta__contenido">
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_5">titulo</h3>
+                  <span class="tarjeta__divisor"></span>
+                  <p
+                    class="tarjeta__parrafo scroll scroll_fino"
+                    aria-label="descripcion de proyecto personal"
+                    aria-describedby="titulo_proyecto_5"
+                  >
+                    Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                    Inventore necessitatibus doloribus adipisci dolorum cum et
+                    quisquam dicta veniam accusamus dignissimos. Placeat eligendi
+                    nihil voluptates eos enim aperiam porro architecto et?
+                  </p>
+                  <button href="#" class="boton boton_oscuro" target="_blank">Ver proyecto</button>
+                </div>
+              </article>
+
+              <!--Proyecto 6-->
+
+              <article
+                class="tarjeta"
+                aria-label="presentacion de proyecto personal"
+              >
+                <img
+                  class="tarjeta__imagen"
+                  src="./assets/images/proyectos/desarrollo-6.jpg"
+                  alt="imagen del proyecto"
+                  title="proyecto 6"
+                />
+                <div class="tarjeta__contenido">
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_6">titulo</h3>
+                  <span class="tarjeta__divisor"></span>
+                  <p
+                    class="tarjeta__parrafo scroll scroll_fino scroll_gris"
+                    aria-label="descripcion de proyecto personal"
+                    aria-describedby="titulo_proyecto_6"
+                  >
+                    Lorem ipsum dolor sit, amet consectetur adipisicing elit.
+                    Inventore necessitatibus doloribus adipisci dolorum cum et
+                    quisquam dicta veniam accusamus dignissimos. Placeat eligendi
+                    nihil voluptates eos enim aperiam porro architecto et?
+                  </p>
+                  <button href="#" class="boton" target="_blank">Ver proyecto</button>
+                </div>
+              </article>
+            </div>
+          </article>
+    </main>
+    <!--Aqui termina la seccion main de mi portfolio-->
+
+    <!--A continuacion iniciare con el footer-->
+    <!--Aqui pondre informacion de contacto-->
+
+    <footer>
+
+    </footer>
 </body>
 </html>
