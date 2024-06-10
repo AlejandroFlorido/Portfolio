@@ -42,8 +42,8 @@
                 <p class="presentacion__parrafo">Soy estudiante de programación con interés en el desarrollo back-end y la seguridad informática. Aspiro a crear sistemas robustos y eficientes, contribuyendo a tecnologías seguras y de alto rendimiento.</p>
                 <div class="presentacion__contenedor_botones">
                     <!--Este enlace lleva a mi CV para ser visualizado o descargado-->
-                    <button href="#sobre-mi" class="boton" role="button">Sobre mi</button>
-                    <button href="./assets/docs/Curriculum.pdf" target="_blank" class="boton boton_oscuro" role="button">Descargar CV</button>
+                    <a href="#sobre-mi" class="boton" role="button">Sobre mi</a>
+                    <a href="./assets/docs/Curriculum.pdf" target="_blank" class="boton boton_oscuro" role="button">Descargar CV</a>
                 </div>
             </div>  
         </section>
@@ -199,7 +199,7 @@
                   title="proyecto 1"
                 />
                 <div class="tarjeta__contenido">
-                  <h3 class="tarjeta__titulo" id="titulo_proyecto_1">titulo</h3>
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_1">Proyecto 1</h3>
                   <span class="tarjeta__divisor"></span>
                   <p
                     class="tarjeta__parrafo scroll scroll_fino"
@@ -211,7 +211,7 @@
                     quisquam dicta veniam accusamus dignissimos. Placeat eligendi
                     nihil voluptates eos enim aperiam porro architecto et?
                   </p>
-                  <button href="#" class="boton boton_oscuro" target="_blank">Ver proyecto</button>
+                  <a href="#" class="boton boton_oscuro" target="_blank">Ver proyecto</a>
                 </div>
               </article>
 
@@ -228,7 +228,7 @@
                   title="proyecto 2"
                 />
                 <div class="tarjeta__contenido">
-                  <h3 class="tarjeta__titulo" id="titulo_proyecto_2">titulo</h3>
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_2">Proyecto 2</h3>
                   <span class="tarjeta__divisor"></span>
                   <p
                     class="tarjeta__parrafo scroll scroll_fino scroll_gris"
@@ -240,7 +240,7 @@
                     quisquam dicta veniam accusamus dignissimos. Placeat eligendi
                     nihil voluptates eos enim aperiam porro architecto et?
                   </p>
-                  <button href="#" class="boton" target="_blank">Ver proyecto</button>
+                  <a href="#" class="boton" target="_blank">Ver proyecto</a>
                 </div>
               </article>
 
@@ -257,7 +257,7 @@
                   title="proyecto 3"
                 />
                 <div class="tarjeta__contenido">
-                  <h3 class="tarjeta__titulo" id="titulo_proyecto_3">titulo</h3>
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_3">Proyecto 3</h3>
                   <span class="tarjeta__divisor"></span>
                   <p
                     class="tarjeta__parrafo scroll scroll_fino"
@@ -269,7 +269,7 @@
                     quisquam dicta veniam accusamus dignissimos. Placeat eligendi
                     nihil voluptates eos enim aperiam porro architecto et?
                   </p>
-                  <button href="#" class="boton boton_oscuro" target="_blank">Ver proyecto</button>
+                  <a href="#" class="boton boton_oscuro" target="_blank">Ver proyecto</a>
                 </div>
               </article>
 
@@ -286,7 +286,7 @@
                   title="proyecto 4"
                 />
                 <div class="tarjeta__contenido">
-                  <h3 class="tarjeta__titulo" id="titulo_proyecto_4">titulo</h3>
+                  <h3 class="tarjeta__titulo" id="titulo_proyecto_4">Proyecto 4</h3>
                   <span class="tarjeta__divisor"></span>
                   <p
                     class="tarjeta__parrafo scroll scroll_fino scroll_gris"
@@ -298,7 +298,7 @@
                     quisquam dicta veniam accusamus dignissimos. Placeat eligendi
                     nihil voluptates eos enim aperiam porro architecto et?
                   </p>
-                  <button href="#" class="boton" target="_blank">Ver proyecto</button>
+                  <a href="#" class="boton" target="_blank">Ver proyecto</a>
                 </div>
               </article>
             </div>
@@ -310,7 +310,95 @@
     <!--Aqui pondre informacion de contacto-->
 
     <footer>
-      
+
+      <div class="pie_de_pagina__columna">
+        <h4 class="pie_de_pagina__titulo_columna">Mis redes</h4>
+        <ul class="enlaces enlaces_redes">
+          <li class="enlaces__item">
+            <a
+              class="enlaces__enlace enlaces__enlace_footer"
+              href="https://github.com/AlejandroFlorido"
+              target="_blank"
+              ><img
+                class="enlaces__icono"
+                src="./assets/images/logos/githubFavicon.png"
+                alt="logo de github"
+                title="github"
+            /></a>
+          </li>
+          <li class="enlaces__item">
+            <a
+              class="enlaces__enlace enlaces__enlace_footer"
+              href="https://www.instagram.com/florido.alejandro/"
+              target="_blank"
+            >
+              <img
+                class="enlaces__icono"
+                src="./assets/images/logos/instagramFavicon.png"
+                alt="logo de instagram"
+                title="instagram"
+              />
+            </a>
+          </li>
+          <li class="enlaces__item">
+            <a
+              class="enlaces__enlace enlaces__enlace_footer"
+              href="https://www.linkedin.com/in/alejandro-florido-453950283/?originalSubdomain=ar"
+              target="_blank"
+              ><img
+                class="enlaces__icono"
+                src="./assets/images/logos/linkedinFavicon.png"
+                alt="logo de Linkedin"
+                title="Linkedin"
+            /></a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- explicacion: la segunda columna sera para nuestros medios de contacto  -->
+      <div class="pie_de_pagina__columna">
+        <h4 class="pie_de_pagina__titulo_columna">Contactame</h4>
+        <ul class="enlaces enlaces_vertical">
+          <li class="enlaces__item">
+            <a
+              class="enlaces__enlace enlaces__enlace_footer"
+              href="mailto:mail@mail.com"
+              target="_blank"
+              >Mail: mail@mail.com</a
+            >
+          </li>
+        </ul>
+      </div>
+
+      <!-- explicacion: la ultima columna sera para los enlaces de navegacion -->
+      <div class="pie_de_pagina__columna" role="navigation">
+        <h4 class="pie_de_pagina__titulo_columna">Secciones</h4>
+        <ul class="enlaces enlaces_vertical">
+          <li class="enlaces__item">
+            <a
+              class="enlaces__enlace enlaces__enlace_footer"
+              href="#presentacion"
+              >Inicio</a
+            >
+          </li>
+          <li class="enlaces__item">
+            <a class="enlaces__enlace enlaces__enlace_footer" href="#sobre-mi"
+              >Sobre mi</a
+            >
+          </li>
+          <li class="enlaces__item">
+            <a class="enlaces__enlace enlaces__enlace_footer" href="#proyectos"
+              >Proyectos</a
+            >
+          </li>
+        </ul>
+      </div>
+
+      <!-- por ultimo los derechos de la pagina -->
+      <div class="pie_de_pagina__copyright">
+        <p>©️Copyright 2024</p>
+      </div>
+
     </footer>
 </body>
 </html>
