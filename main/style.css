@@ -23,7 +23,6 @@
     --texto-peso-regular: 400;
     --texto-peso-fino: 300;
   }
-  
   /* estilos generales */
   * {
     /* normalizador */
@@ -43,6 +42,7 @@
   body {
     min-height: 100%;
     position: relative;
+    background-image: url("./assets/images/profile/cielo-tema-oscuro.jpg");
   }
 
   /* encabezado */
@@ -67,16 +67,10 @@
   text-shadow: 2px 2px 2px var(--fondo-secundario);
 }
 
-/* principal */
-.principal {
-  background-color: var(--fondo-primario);
-}
-
 /* presentacion */
 .presentacion {
   width: 100%;
   height: 100vh;
-  background-image: url("./assets/images/profile/cielo-tema-oscuro.jpg");
   background-size: cover;
   background-position: center;
 }
@@ -119,7 +113,7 @@
 /* articulo */
 .articulo {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   padding: 2rem 10rem;
   display: flex;
   flex-direction: column;
@@ -128,13 +122,11 @@
   gap: 1rem;
 }
 .sobre_mi {
-  background-image: url("./assets/images/profile/cielo-tema-oscuro.jpg");
   background-size: cover;
   background-position: center;
 
 }
 .proyectos {
-  background-image: url("./assets/images/profile/cielo-tema-oscuro.jpg");
   background-size: cover;
   background-position: center;
   height: max-content;
@@ -173,7 +165,10 @@
   /* background-color: transparent; */
   cursor: pointer;
 }
-.seccion_descripcion__imagen {
+
+/*Busca etiqueta imagen dentro de la seccion directamente*/
+/*Para ahorrar codigo*/
+.seccion_descripcion__porta_retrato img {
   width: 100%;
   height: 230px;
   object-fit: cover;
