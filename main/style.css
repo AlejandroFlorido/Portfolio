@@ -82,6 +82,7 @@ body {
   background-image: url("./assets/images/profile/cielo-tema-oscuro.jpg");
   background-size: cover;
   background-position: center;
+  border-bottom: 1px solid var(--texto-secundario);
 }
 .presentacion__contenedor_info {
   width: 100%;
@@ -138,6 +139,8 @@ body {
     var(--color-primario-apagado) 75%,
     var(--color-primario) 90%
   );
+  max-height: 100%;
+  Height: auto;
 }
 .proyectos {
   background: linear-gradient(
@@ -147,6 +150,8 @@ body {
     var(--fondo-primario) 55%
   );
   display: flex;
+  max-height: 100%;
+  Height: auto;
 }
 
 .articulo__titulo {
@@ -255,12 +260,7 @@ body {
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 2rem;
-  background-color: var(--fondo-primario);
-  background: linear-gradient(
-    180deg,
-    var(--fondo-primario) 0%,
-    var(--fondo-secundario) 100%
-  );
+  background-image: url("./assets/images/profile/cielo-tema-oscuro.jpg");
   border-top: 1px solid var(--texto-secundario);
 }
 .pie_de_pagina__columna {
