@@ -48,14 +48,6 @@ body {
   position: relative;
 }
 
-/* Hola, en este video continuaremos agregando estilos al proyecto. 
-Para esto mismo deberemos utilizar las clases que utilizamos anteriormente en las etiquetas de html. 
-Comencemos siguiendo la estructura de nuestro documento html de arriba hacia abajo. Para facilitar esto
-escribamos la misma (comentarios: encabezado, principal, presentacion, articulo, seccion descripcion,
- pie de pagina) 
-recuerden que tambien teniamos elementos que podian repetirse en varios lugares de la pagina, los mismos 
-los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
-
 /* encabezado */
 .encabezado {
   position: absolute;
@@ -117,7 +109,7 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   font-size: var(--presentacion-titulo-tamanio);
   color: var(--color-primario);
   text-shadow: 2px 2px 2px var(--fondo-secundario);
-  /*  animation: cambiar-color 8s linear infinite alternate; */
+  animation: cambiar-color 8s linear infinite alternate;
 }
 
 .presentacion__parrafo {
@@ -154,8 +146,6 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
     var(--color-primario-apagado) 10%,
     var(--fondo-primario) 55%
   );
-  /* eliminar en el video 3 */
-  height: max-content;
 }
 
 .articulo__titulo {
@@ -172,7 +162,7 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
 
 /* seccion descripcion */
 .seccion_descripcion {
-  /* position: relative; */
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -188,13 +178,13 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   width: 300px;
   padding: 10px;
   background-color: var(--texto-primario);
-  /*   background-color: transparent; */
+  background-color: transparent;
   cursor: pointer;
 }
 .seccion_descripcion__imagen {
   width: 100%;
   height: 240px;
-  /* width: 300px;
+  width: 300px;
   height: 300px;
   padding: 10px;
   padding-bottom: 50px;
@@ -202,19 +192,20 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   position: absolute;
   top: 40px;
   left: 50%;
-  transform: translateX(-50%); */
+  transform: translateX(-50%);
   object-fit: cover;
-  /* transition: left 0.3s ease, right 0.3s ease, top 0.3s ease, bottom 0.3s ease,
+  transition: left 0.3s ease, right 0.3s ease, top 0.3s ease, bottom 0.3s ease,
     width 0.3s ease, height 0.3s ease, padding 0.3s ease,
     background-color 0.3s ease, transform 0.3s ease,
-    border-radius 0.1s 0.2s ease; */
+    border-radius 0.1s 0.2s ease;
 }
-/* .seccion_descripcion__imagen_variante {
+.seccion_descripcion__imagen_variante {
   top: auto;
   bottom: 40px;
 }
 
-.seccion_descripcion__imagen:hover {
+.seccion_descripcion__imagen:hover,
+.seccion_descripcion__imagen:focus {
   width: 100%;
   height: 100%;
   padding: 10px;
@@ -224,10 +215,11 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   border-radius: 20px;
   transform: translateX(0);
 }
-.seccion_descripcion__imagen_variante:hover {
+.seccion_descripcion__imagen_variante:hover
+.seccion_descripcion__imagen_variante:focus {
   top: auto;
   bottom: 0;
-} */
+}
 
 .seccion_descripcion__info {
   display: flex;
@@ -315,7 +307,7 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   font-weight: var(--texto-peso-grueso);
   color: var(--texto-primario);
   text-decoration: none;
-  /* transition: color 0.3s ease; */
+  transition: color 0.3s ease;
 }
 .enlaces__enlace_footer {
   font-size: var(--enlaces-tamanio-pequenio);
@@ -326,13 +318,14 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   aspect-ratio: 1;
   filter: drop-shadow(0px 0px 2px var(--texto-primario));
 }
-/* .enlaces__icono:hover {
+ .enlaces__icono:hover,
+ .enlaces__icono:focus {
   filter: drop-shadow(0px 0px 4px var(--texto-primario));
 }
 .enlaces__enlace:hover,
 .enlaces__enlace:focus {
   color: var(--color-primario);
-} */
+}
 /* botones */
 .boton {
   display: flex;
@@ -345,26 +338,26 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   background-color: var(--texto-primario);
   color: var(--fondo-primario);
   border-radius: 4px;
-  /* transition: background-color 0.3s ease, color 0.3s ease; */ /* agregar en semana siguiente */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
-/* .boton:hover {
+.boton:hover {
   color: var(--texto-primario);
   background-color: var(--color-primario-apagado);
-} */
+}
 .boton_oscuro {
   color: var(--texto-primario);
   background-color: var(--color-primario);
 }
-/* .boton_oscuro:hover {
+.boton_oscuro:hover {
   color: var(--texto-primario);
   background-color: var(--color-primario-apagado);
-} */
+} 
 
 /* tarjetas */
 .contenedor_tarjetas_grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  /* grid-template-columns: 1fr 1fr 1fr; */
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr auto;
   gap: 2rem;
 }
@@ -374,28 +367,26 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
   background-color: var(--fondo-primario-transparente);
   border-radius: 0.375rem;
   box-shadow: 0 0 8px var(--color-primario-transparente);
-  /* position: relative; */
+  position: relative;
   overflow: hidden;
-  /* transition: box-shadow 0.3s ease; */
-  /* eliminar display flex en video 3 */
-  display: flex;
+  transition: box-shadow 0.3s ease;
 }
 .tarjeta__contenido {
-  /* position: absolute;
+  position: absolute;
   left: 0;
   top: 0;
   height: 100%;
-  width: 100%;*/
+  width: 100%;
   padding: 0 2rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
   gap: 10px;
-  /* background-color: var(--fondo-primario-transparente); */
-  /* backdrop-filter: blur(4px); */
-  /* opacity: 0; */
-  /* transition: opacity 0.3s ease; */
+  background-color: var(--fondo-primario-transparente);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 .tarjeta__contenido .boton {
   align-self: flex-end;
@@ -419,16 +410,18 @@ los escribiremos al final (comentarios: enlaces, botones, tarjetas) */
 .tarjeta__imagen {
   height: 100%;
   width: 50%;
-  /* width: 100%; */
+  width: 100%;
   object-fit: cover;
-  /* transition: transform 0.3s ease-in; */
+  transition: transform 0.3s ease-in;
 }
-/* .tarjeta:hover {
+.tarjeta:hover {
   box-shadow: 0px 0px 12px var(--fondo-secundario);
 }
-.tarjeta:hover > .tarjeta__imagen {
+.tarjeta:hover > .tarjeta__imagen,
+.tarjeta:focus > .tarjeta__imagen {
   transform: scale(1.2);
 }
-.tarjeta:hover > .tarjeta__contenido {
+.tarjeta:hover > .tarjeta__contenido,
+.tarjeta:focus > .tarjeta__contenido {
   opacity: 1;
-} */
+}
