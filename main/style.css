@@ -146,6 +146,7 @@ body {
     var(--color-primario-apagado) 10%,
     var(--fondo-primario) 55%
   );
+  display: flex;
 }
 
 .articulo__titulo {
@@ -180,6 +181,7 @@ body {
   background-color: var(--texto-primario);
   background-color: transparent;
   cursor: pointer;
+  
 }
 .seccion_descripcion__imagen {
   width: 100%;
