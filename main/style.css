@@ -135,24 +135,11 @@ body {
 }
 
 .sobre_mi {
-  background: linear-gradient(
-    180deg,
-    rgb(15 8 16) 0%,
-    var(--fondo-primario) 10%,
-    var(--color-primario-apagado) 75%,
-    var(--color-primario) 90%
-  );
   max-height: 100%;
   height: auto;
 }
 
 .proyectos {
-  background: linear-gradient(
-    180deg,
-    var(--color-primario) 0%,
-    var(--color-primario-apagado) 10%,
-    var(--fondo-primario) 55%
-  );
   display: flex;
   max-height: 100%;
   height: auto;
