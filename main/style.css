@@ -494,6 +494,7 @@ body {
   .seccion_descripcion {
     height: max-content;
     gap: 1rem;
+    background-color: #0c0b26;
   }
   .seccion_descripcion__info {
     height: 300px;
