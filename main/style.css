@@ -94,11 +94,6 @@ body {
   justify-content: center;
   align-items: flex-start;
   gap: 3rem;
-  background: linear-gradient(
-    90deg,
-    var(--fondo-primario-transparente) 20%,
-    transparent 40%
-  );
 }
 
 .presentacion__contenedor_botones {
@@ -476,11 +471,6 @@ body {
 @media (max-width: 1200px) {
   .presentacion__contenedor_info {
     justify-content: flex-end;
-    background: linear-gradient(
-      90deg,
-      var(--fondo-primario-transparente) 40%,
-      transparent 60%
-    );
   }
   .contenedor_tarjetas_grid {
     grid-template-columns: 1fr 1fr;
@@ -506,13 +496,6 @@ body {
 }
 
 @media (max-width: 992px) {
-  .presentacion__contenedor_info {
-    background: linear-gradient(
-      90deg,
-      var(--fondo-primario-transparente) 40%,
-      transparent 80%
-    );
-  }
   .boton {
     width: 140px;
   }
@@ -526,7 +509,6 @@ body {
     height: 120px;
     display: flex;
     flex-direction: column;
-    background-color: var(--fondo-primario-transparente);
   }
   .enlaces {
     width: 80%;
