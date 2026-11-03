@@ -17,12 +17,17 @@ const base = import.meta.env.BASE_URL;
     <span class="hud__status">Núcleo · <b data-status>en reposo</b></span>
     <span class="hud__clock" data-clock>--:--:--</span>
     <span class="hud__name">A. Florido</span>
-    <span class="hud__coords">27.45°S · 58.98°O</span>
   </div>
+
+  <button class="sound-toggle" type="button" aria-pressed="true" data-sound>
+    <span class="sound-toggle__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span data-sound-label>Sonido</span>
+  </button>
 
   <main class="stage">
     <svg class="links" aria-hidden="true">
       {nodes.map((node) => <line data-link={node.id} />)}
+      {nodes.map((node) => <circle class="packet" r="2.5" data-packet={node.id} />)}
     </svg>
 
     <button class="core" type="button" aria-label="Activar núcleo" aria-expanded="false" data-core>
@@ -39,6 +44,8 @@ const base = import.meta.env.BASE_URL;
         <circle class="core__ring core__ring--arc" cx="100" cy="100" r="64"></circle>
         <circle class="core__heart" cx="100" cy="100" r="26"></circle>
       </svg>
+      <span class="core__wave" aria-hidden="true"></span>
+      <span class="core__wave core__wave--late" aria-hidden="true"></span>
     </button>
     <p class="hint">Tocá el núcleo para iniciar</p>
 
@@ -76,6 +83,7 @@ const base = import.meta.env.BASE_URL;
 
   <script>
     import { startTopo } from "../scripts/topo";
+    import { sfx } from "../scripts/sound";
     import { nodes } from "../data/nodes";
 
     const topo = startTopo(document.getElementById("topo") as HTMLCanvasElement);
@@ -86,27 +94,55 @@ const base = import.meta.env.BASE_URL;
     const panelTitle = document.querySelector<HTMLElement>("[data-panel-title]")!;
     const panelCode = document.querySelector<HTMLElement>("[data-panel-code]")!;
     const panelBody = document.querySelector<HTMLElement>("[data-panel-body]")!;
+    const panel = document.querySelector<HTMLElement>("[data-panel]")!;
+    const soundBtn = document.querySelector<HTMLButtonElement>("[data-sound]")!;
     const nodeButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-node]")];
     const links = [...document.querySelectorAll<SVGLineElement>("[data-link]")];
+    const packets = [...document.querySelectorAll<SVGCircleElement>("[data-packet]")];
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ONLINE = `en línea · ${nodes.length} nodos`;
 
-    // Reloj del HUD
+    // ---------- Reloj ----------
     const tick = () => (clock.textContent = new Date().toLocaleTimeString("es-AR", { hour12: false }));
     tick();
     setInterval(tick, 1000);
 
-    // Texto de estado con efecto de "tipeo"
-    let typing = 0;
-    function setStatus(text: string) {
-      clearInterval(typing);
-      let i = 0;
-      status.textContent = "";
-      typing = window.setInterval(() => {
-        status.textContent = text.slice(0, ++i);
-        if (i >= text.length) clearInterval(typing);
-      }, 28);
+    // ---------- Sonido ----------
+    function renderSound() {
+      soundBtn.setAttribute("aria-pressed", String(sfx.enabled));
+      soundBtn.classList.toggle("is-off", !sfx.enabled);
+      soundBtn.querySelector("[data-sound-label]")!.textContent = sfx.enabled ? "Sonido" : "Silencio";
     }
+    renderSound();
+    soundBtn.addEventListener("click", () => {
+      sfx.setEnabled(!sfx.enabled, body.classList.contains("is-awake"));
+      renderSound();
+    });
 
-    // Ubica los nodos en círculo alrededor del núcleo y dibuja las conexiones
+    // ---------- Texto con efecto de tipeo ----------
+    let typing = 0;
+    function typeInto(el: HTMLElement, text: string, speed = 28, withSound = false) {
+      return new Promise<void>((resolve) => {
+        if (el === status) clearInterval(typing);
+        let i = 0;
+        el.textContent = "";
+        const id = window.setInterval(() => {
+          el.textContent = text.slice(0, ++i);
+          if (withSound && i % 2 === 0) sfx.type();
+          if (i >= text.length) {
+            clearInterval(id);
+            resolve();
+          }
+        }, speed);
+        if (el === status) typing = id;
+      });
+    }
+    const setStatus = (text: string) => typeInto(status, text);
+
+    // ---------- Geometría de nodos y conexiones ----------
+    interface Seg { x1: number; y1: number; x2: number; y2: number }
+    const segs: Seg[] = [];
+
     function layout() {
       const w = innerWidth, h = innerHeight;
       // Elipse: en pantallas verticales los nodos se separan más en altura
@@ -120,63 +156,151 @@ const base = import.meta.env.BASE_URL;
         const y = Math.sin(angle) * ry;
         btn.style.setProperty("--x", `${x}px`);
         btn.style.setProperty("--y", `${y}px`);
+        const seg = {
+          x1: cx + Math.cos(angle) * inner,
+          y1: cy + Math.sin(angle) * inner,
+          x2: cx + x - Math.cos(angle) * 30,
+          y2: cy + y - Math.sin(angle) * 30,
+        };
+        segs[i] = seg;
         const line = links[i];
-        line.setAttribute("x1", String(cx + Math.cos(angle) * inner));
-        line.setAttribute("y1", String(cy + Math.sin(angle) * inner));
-        line.setAttribute("x2", String(cx + x - Math.cos(angle) * 30));
-        line.setAttribute("y2", String(cy + y - Math.sin(angle) * 30));
+        line.setAttribute("x1", String(seg.x1));
+        line.setAttribute("y1", String(seg.y1));
+        line.setAttribute("x2", String(seg.x2));
+        line.setAttribute("y2", String(seg.y2));
+        const len = Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1);
+        line.style.setProperty("--len", String(len));
       });
     }
     layout();
     addEventListener("resize", layout);
 
-    function wake() {
-      body.classList.add("is-awake");
+    // ---------- Paquetes de datos que viajan por las conexiones ----------
+    const packetState = packets.map((_, i) => ({ t: Math.random(), speed: 0.25 + Math.random() * 0.25, burst: 0, i }));
+    let last = performance.now();
+    function animatePackets(now: number) {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const awake = body.classList.contains("is-awake");
+      packetState.forEach((p) => {
+        const seg = segs[p.i];
+        const el = packets[p.i];
+        if (!seg || !awake) {
+          el.style.opacity = "0";
+          return;
+        }
+        const speed = p.burst > 0 ? 2.6 : p.speed;
+        p.t += dt * speed;
+        if (p.t > 1) {
+          p.t = p.burst > 0 ? 1 : 0;
+          if (p.burst > 0) p.burst = 0;
+        }
+        el.setAttribute("cx", String(seg.x1 + (seg.x2 - seg.x1) * p.t));
+        el.setAttribute("cy", String(seg.y1 + (seg.y2 - seg.y1) * p.t));
+        el.setAttribute("r", p.burst > 0 ? "4.5" : "2.5");
+        el.style.opacity = String(Math.sin(Math.PI * p.t));
+      });
+      requestAnimationFrame(animatePackets);
+    }
+    if (!reduceMotion) requestAnimationFrame(animatePackets);
+
+    function firePacket(i: number) {
+      packetState[i].t = 0;
+      packetState[i].burst = 1;
+    }
+
+    // ---------- Estados ----------
+    let bootTimer = 0;
+
+    async function wake() {
+      body.classList.add("is-booting");
       core.setAttribute("aria-expanded", "true");
       core.setAttribute("aria-label", "Núcleo activo. Volver a reposo");
+      sfx.wake();
+      topo.pulse(innerWidth / 2, innerHeight / 2, 1.4);
       topo.setIntensity(1);
-      setStatus(`en línea · ${nodes.length} nodos`);
+      clearTimeout(bootTimer);
+      bootTimer = window.setTimeout(() => {
+        body.classList.add("is-awake");
+        body.classList.remove("is-booting");
+      }, reduceMotion ? 0 : 900);
+      await setStatus("inicializando núcleo…");
+      if (!body.classList.contains("is-awake") && !body.classList.contains("is-booting")) return;
+      await setStatus("enlazando nodos…");
+      if (body.classList.contains("is-awake")) setStatus(ONLINE);
     }
 
     function sleep() {
-      closePanel();
-      body.classList.remove("is-awake");
+      closePanel(false);
+      clearTimeout(bootTimer);
+      body.classList.remove("is-awake", "is-booting");
       core.setAttribute("aria-expanded", "false");
       core.setAttribute("aria-label", "Activar núcleo");
+      sfx.sleep();
       topo.setIntensity(0.35);
       setStatus("en reposo");
     }
 
+    let openTimer = 0;
     function openPanel(id: string) {
-      const node = nodes.find((n) => n.id === id);
+      const index = nodes.findIndex((n) => n.id === id);
+      const node = nodes[index];
       const tpl = document.querySelector<HTMLTemplateElement>(`template[data-content="${id}"]`);
       if (!node || !tpl) return;
-      panelCode.textContent = `${node.code} // acceso concedido`;
-      panelTitle.textContent = node.label;
-      panelBody.replaceChildren(tpl.content.cloneNode(true));
-      body.classList.add("has-panel");
+      sfx.open();
+      firePacket(index);
       nodeButtons.forEach((b) => b.classList.toggle("is-active", b.dataset.node === id));
       links.forEach((l) => l.classList.toggle("is-active", l.dataset.link === id));
-      setStatus(`abriendo ${node.label.toLowerCase()}`);
-      history.replaceState(null, "", `#${id}`);
+      const rect = nodeButtons[index].getBoundingClientRect();
+      topo.pulse(rect.left + rect.width / 2, rect.top + rect.height / 2, 0.6);
+      setStatus(`abriendo ${node.label.toLowerCase()}…`);
+      clearTimeout(openTimer);
+      openTimer = window.setTimeout(() => {
+        panelCode.textContent = `${node.code} // acceso concedido`;
+        panelBody.replaceChildren(tpl.content.cloneNode(true));
+        panel.classList.remove("is-scanning");
+        void panel.offsetWidth; // reinicia la animación de escaneo
+        panel.classList.add("is-scanning");
+        body.classList.add("has-panel");
+        typeInto(panelTitle, node.label, 45, true).then(() => {
+          if (body.classList.contains("has-panel")) setStatus(`nodo ${node.code} · activo`);
+        });
+        history.replaceState(null, "", `#${id}`);
+      }, reduceMotion ? 0 : 260);
     }
 
-    function closePanel() {
+    function closePanel(withSound = true) {
+      clearTimeout(openTimer);
       if (!body.classList.contains("has-panel")) return;
+      if (withSound) sfx.close();
       body.classList.remove("has-panel");
       nodeButtons.forEach((b) => b.classList.remove("is-active"));
       links.forEach((l) => l.classList.remove("is-active"));
-      setStatus(`en línea · ${nodes.length} nodos`);
+      setStatus(ONLINE);
       history.replaceState(null, "", location.pathname);
     }
 
+    // ---------- Eventos ----------
     core.addEventListener("click", () => {
+      if (body.classList.contains("is-booting")) return;
       if (!body.classList.contains("is-awake")) wake();
       else if (body.classList.contains("has-panel")) closePanel();
       else sleep();
     });
-    nodeButtons.forEach((btn) => btn.addEventListener("click", () => openPanel(btn.dataset.node!)));
-    document.querySelector("[data-panel-close]")!.addEventListener("click", closePanel);
+    nodeButtons.forEach((btn, i) => {
+      btn.addEventListener("click", () => openPanel(btn.dataset.node!));
+      const enter = () => {
+        if (!body.classList.contains("is-awake")) return;
+        links[i].classList.add("is-hover");
+        sfx.hover();
+      };
+      const leave = () => links[i].classList.remove("is-hover");
+      btn.addEventListener("pointerenter", enter);
+      btn.addEventListener("focus", enter);
+      btn.addEventListener("pointerleave", leave);
+      btn.addEventListener("blur", leave);
+    });
+    document.querySelector("[data-panel-close]")!.addEventListener("click", () => closePanel());
     addEventListener("keydown", (e) => {
       if (e.key === "Escape") closePanel();
     });
@@ -185,7 +309,7 @@ const base = import.meta.env.BASE_URL;
     const initial = location.hash.slice(1);
     if (nodes.some((n) => n.id === initial)) {
       wake();
-      setTimeout(() => openPanel(initial), 700);
+      setTimeout(() => openPanel(initial), 1300);
     }
   </script>
 </Layout>

@@ -39,6 +39,8 @@ export function startTopo(canvas: HTMLCanvasElement, opts: TopoOptions = {}) {
   let intensity = 0.35; // 0..1, sube cuando el núcleo despierta
   let intensityTarget = 0.35;
   let t = Math.random() * 100;
+  // Ondas expansivas (por ejemplo, cuando despierta el núcleo)
+  const ripples: { x: number; y: number; start: number; strength: number }[] = [];
 
   function resize() {
     dpr = Math.min(devicePixelRatio || 1, 2);
@@ -55,6 +57,15 @@ export function startTopo(canvas: HTMLCanvasElement, opts: TopoOptions = {}) {
   function computeField() {
     const scale = 0.0032;
     const radius = Math.min(w, h) * 0.22;
+    const now = performance.now();
+    for (let r = ripples.length - 1; r >= 0; r--) {
+      if (now - ripples[r].start > 2600) ripples.splice(r, 1);
+    }
+    const waves = ripples.map((r) => {
+      const age = (now - r.start) / 2600; // 0..1
+      return { x: r.x, y: r.y, radius: age * Math.max(w, h) * 0.8, amp: (1 - age) * 0.18 * r.strength };
+    });
+    const waveWidth = 70 * 70;
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
         const px = i * cell, py = j * cell;
@@ -63,6 +74,10 @@ export function startTopo(canvas: HTMLCanvasElement, opts: TopoOptions = {}) {
         const dx = px - mouse.x, dy = py - mouse.y;
         const d2 = (dx * dx + dy * dy) / (radius * radius);
         v += Math.exp(-d2) * 0.22 * mouse.strength;
+        for (const wv of waves) {
+          const dist = Math.hypot(px - wv.x, py - wv.y) - wv.radius;
+          v += Math.exp(-(dist * dist) / waveWidth) * wv.amp;
+        }
         field[j * cols + i] = v;
       }
     }
@@ -144,6 +159,9 @@ export function startTopo(canvas: HTMLCanvasElement, opts: TopoOptions = {}) {
   frame();
 
   return {
+    pulse(x: number, y: number, strength = 1) {
+      ripples.push({ x, y, start: performance.now(), strength });
+    },
     setIntensity(v: number) {
       intensityTarget = v;
       if (reduceMotion) {
