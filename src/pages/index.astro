@@ -1,10 +1,191 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { nodes } from "../data/nodes";
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <Layout>
-  <main>
-    <h1>Alejandro Florido</h1>
-    <p>Portafolio en construcción.</p>
+  <canvas id="topo" aria-hidden="true"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="hud" aria-hidden="true">
+    <span class="hud__corner hud__corner--tl"></span>
+    <span class="hud__corner hud__corner--tr"></span>
+    <span class="hud__corner hud__corner--bl"></span>
+    <span class="hud__corner hud__corner--br"></span>
+    <span class="hud__status">Núcleo · <b data-status>en reposo</b></span>
+    <span class="hud__clock" data-clock>--:--:--</span>
+    <span class="hud__name">A. Florido</span>
+    <span class="hud__coords">27.45°S · 58.98°O</span>
+  </div>
+
+  <main class="stage">
+    <svg class="links" aria-hidden="true">
+      {nodes.map((node) => <line data-link={node.id} />)}
+    </svg>
+
+    <button class="core" type="button" aria-label="Activar núcleo" aria-expanded="false" data-core>
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <radialGradient id="coreGlow">
+            <stop offset="0%" stop-color="#50dcff" stop-opacity="0.55"></stop>
+            <stop offset="100%" stop-color="#50dcff" stop-opacity="0"></stop>
+          </radialGradient>
+        </defs>
+        <circle class="core__glow" cx="100" cy="100" r="100"></circle>
+        <circle class="core__ring core__ring--outer" cx="100" cy="100" r="96"></circle>
+        <circle class="core__ring core__ring--ticks" cx="100" cy="100" r="80"></circle>
+        <circle class="core__ring core__ring--arc" cx="100" cy="100" r="64"></circle>
+        <circle class="core__heart" cx="100" cy="100" r="26"></circle>
+      </svg>
+    </button>
+    <p class="hint">Tocá el núcleo para iniciar</p>
+
+    <nav aria-label="Secciones">
+      {
+        nodes.map((node, i) => (
+          <button class="node" type="button" data-node={node.id} style={`--delay: ${0.15 + i * 0.09}s`}>
+            <span class="node__dot" />
+            <span class="node__label">{node.label}</span>
+            <span class="node__code">{node.code}</span>
+          </button>
+        ))
+      }
+    </nav>
   </main>
+
+  <aside class="panel" aria-live="polite" aria-labelledby="panel-title" data-panel>
+    <div class="panel__head">
+      <div>
+        <p class="panel__code" data-panel-code></p>
+        <h2 class="panel__title" id="panel-title" data-panel-title></h2>
+      </div>
+      <button class="panel__close" type="button" aria-label="Cerrar sección" data-panel-close>✕</button>
+    </div>
+    <div class="panel__body" data-panel-body></div>
+  </aside>
+
+  {
+    nodes.map((node) => (
+      <template data-content={node.id}>
+        <Fragment set:html={node.html.replaceAll('href="cv-', `href="${base}cv-`)} />
+      </template>
+    ))
+  }
+
+  <script>
+    import { startTopo } from "../scripts/topo";
+    import { nodes } from "../data/nodes";
+
+    const topo = startTopo(document.getElementById("topo") as HTMLCanvasElement);
+    const body = document.body;
+    const core = document.querySelector<HTMLButtonElement>("[data-core]")!;
+    const status = document.querySelector<HTMLElement>("[data-status]")!;
+    const clock = document.querySelector<HTMLElement>("[data-clock]")!;
+    const panelTitle = document.querySelector<HTMLElement>("[data-panel-title]")!;
+    const panelCode = document.querySelector<HTMLElement>("[data-panel-code]")!;
+    const panelBody = document.querySelector<HTMLElement>("[data-panel-body]")!;
+    const nodeButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-node]")];
+    const links = [...document.querySelectorAll<SVGLineElement>("[data-link]")];
+
+    // Reloj del HUD
+    const tick = () => (clock.textContent = new Date().toLocaleTimeString("es-AR", { hour12: false }));
+    tick();
+    setInterval(tick, 1000);
+
+    // Texto de estado con efecto de "tipeo"
+    let typing = 0;
+    function setStatus(text: string) {
+      clearInterval(typing);
+      let i = 0;
+      status.textContent = "";
+      typing = window.setInterval(() => {
+        status.textContent = text.slice(0, ++i);
+        if (i >= text.length) clearInterval(typing);
+      }, 28);
+    }
+
+    // Ubica los nodos en círculo alrededor del núcleo y dibuja las conexiones
+    function layout() {
+      const w = innerWidth, h = innerHeight;
+      // Elipse: en pantallas verticales los nodos se separan más en altura
+      const rx = Math.min(w * 0.36, h * 0.33);
+      const ry = w < h ? Math.min(h * 0.27, w * 0.6) : Math.min(h * 0.3, w * 0.33);
+      const cx = w / 2, cy = h / 2;
+      const inner = core.offsetWidth / 2 + 6; // la línea arranca en el borde del núcleo
+      nodeButtons.forEach((btn, i) => {
+        const angle = -Math.PI / 2 + (i / nodeButtons.length) * Math.PI * 2;
+        const x = Math.cos(angle) * rx;
+        const y = Math.sin(angle) * ry;
+        btn.style.setProperty("--x", `${x}px`);
+        btn.style.setProperty("--y", `${y}px`);
+        const line = links[i];
+        line.setAttribute("x1", String(cx + Math.cos(angle) * inner));
+        line.setAttribute("y1", String(cy + Math.sin(angle) * inner));
+        line.setAttribute("x2", String(cx + x - Math.cos(angle) * 30));
+        line.setAttribute("y2", String(cy + y - Math.sin(angle) * 30));
+      });
+    }
+    layout();
+    addEventListener("resize", layout);
+
+    function wake() {
+      body.classList.add("is-awake");
+      core.setAttribute("aria-expanded", "true");
+      core.setAttribute("aria-label", "Núcleo activo. Volver a reposo");
+      topo.setIntensity(1);
+      setStatus(`en línea · ${nodes.length} nodos`);
+    }
+
+    function sleep() {
+      closePanel();
+      body.classList.remove("is-awake");
+      core.setAttribute("aria-expanded", "false");
+      core.setAttribute("aria-label", "Activar núcleo");
+      topo.setIntensity(0.35);
+      setStatus("en reposo");
+    }
+
+    function openPanel(id: string) {
+      const node = nodes.find((n) => n.id === id);
+      const tpl = document.querySelector<HTMLTemplateElement>(`template[data-content="${id}"]`);
+      if (!node || !tpl) return;
+      panelCode.textContent = `${node.code} // acceso concedido`;
+      panelTitle.textContent = node.label;
+      panelBody.replaceChildren(tpl.content.cloneNode(true));
+      body.classList.add("has-panel");
+      nodeButtons.forEach((b) => b.classList.toggle("is-active", b.dataset.node === id));
+      links.forEach((l) => l.classList.toggle("is-active", l.dataset.link === id));
+      setStatus(`abriendo ${node.label.toLowerCase()}`);
+      history.replaceState(null, "", `#${id}`);
+    }
+
+    function closePanel() {
+      if (!body.classList.contains("has-panel")) return;
+      body.classList.remove("has-panel");
+      nodeButtons.forEach((b) => b.classList.remove("is-active"));
+      links.forEach((l) => l.classList.remove("is-active"));
+      setStatus(`en línea · ${nodes.length} nodos`);
+      history.replaceState(null, "", location.pathname);
+    }
+
+    core.addEventListener("click", () => {
+      if (!body.classList.contains("is-awake")) wake();
+      else if (body.classList.contains("has-panel")) closePanel();
+      else sleep();
+    });
+    nodeButtons.forEach((btn) => btn.addEventListener("click", () => openPanel(btn.dataset.node!)));
+    document.querySelector("[data-panel-close]")!.addEventListener("click", closePanel);
+    addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closePanel();
+    });
+
+    // Si la URL trae una sección (#proyectos), abrir directamente
+    const initial = location.hash.slice(1);
+    if (nodes.some((n) => n.id === initial)) {
+      wake();
+      setTimeout(() => openPanel(initial), 700);
+    }
+  </script>
 </Layout>
