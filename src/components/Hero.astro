@@ -1,0 +1,73 @@
+---
+import { site } from "../data/site";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<section id="inicio" class="container hero">
+  <div class="hero__text">
+    <p class="hero__kicker">Hola, soy</p>
+    <h1 class="hero__title">{site.name}</h1>
+    <p class="hero__role">{site.role}</p>
+    <p class="hero__tagline">{site.tagline}</p>
+    <div class="hero__actions">
+      <a class="button button--primary" href="#proyectos">Ver proyectos</a>
+      <a class="button" href={`${base}${site.cv}`} target="_blank" rel="noopener">Descargar CV</a>
+    </div>
+  </div>
+  <img class="hero__photo" src={`${base}${site.photo}`} alt={`Foto de ${site.name}`} width="400" height="400" />
+</section>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 3rem;
+    padding-block: 6rem 4rem;
+  }
+  .hero__kicker {
+    font-family: var(--mono);
+    color: var(--accent);
+    margin: 0 0 0.5rem;
+  }
+  .hero__title {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+  }
+  .hero__role {
+    font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+    color: var(--muted);
+    margin: 0 0 1.25rem;
+  }
+  .hero__tagline {
+    max-width: 38rem;
+    margin: 0 0 2rem;
+  }
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .hero__photo {
+    width: clamp(160px, 22vw, 240px);
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 4px solid var(--surface);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  @media (max-width: 720px) {
+    .hero {
+      grid-template-columns: 1fr;
+      padding-block: 3rem 2rem;
+      gap: 2rem;
+    }
+    .hero__photo {
+      order: -1;
+    }
+  }
+</style>

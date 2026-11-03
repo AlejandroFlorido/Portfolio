@@ -1,0 +1,21 @@
+---
+import { site } from "../data/site";
+---
+
+<footer class="footer">
+  <div class="container">
+    <p>© {new Date().getFullYear()} {site.name}. Hecho con Astro.</p>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--border);
+    padding-block: 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .footer p {
+    margin: 0;
+  }
+</style>
