@@ -1,4 +1,6 @@
 ---
+import "../styles/hud.css";
+
 interface Props {
   title?: string;
   description?: string;
@@ -16,6 +18,12 @@ const base = import.meta.env.BASE_URL;
     <meta name="description" content={description} />
     <title>{title}</title>
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <slot />
