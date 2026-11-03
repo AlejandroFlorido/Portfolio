@@ -1,0 +1,23 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = "Alejandro Florido | Portafolio", description = "Portafolio de Alejandro Florido." } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
