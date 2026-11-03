@@ -21,23 +21,14 @@ Mi portafolio personal como desarrollador web, hecho con [Astro](https://astro.b
 ## Estructura
 
 ```
-├── public/                 # Archivos estáticos (foto, CV, favicon)
+├── public/                 # Archivos estáticos (imágenes, CV, favicon)
 ├── src/
-│   ├── components/         # Secciones de la página (Header, Hero, About, Projects, Contact, Footer)
-│   ├── data/
-│   │   ├── site.ts         # Datos personales, textos, redes y tecnologías
-│   │   └── projects.ts     # Lista de proyectos
-│   ├── layouts/Layout.astro
-│   ├── pages/index.astro   # Página principal
-│   └── styles/global.css   # Colores, tipografía y estilos base (modo claro y oscuro)
+│   ├── layouts/Layout.astro  # HTML base compartido por todas las páginas
+│   └── pages/index.astro     # Página principal
 └── .github/workflows/      # CI en cada PR y deploy automático a GitHub Pages
 ```
 
-## Cómo editar contenido
-
-- **Textos y enlaces:** `src/data/site.ts`
-- **Agregar un proyecto:** sumá un objeto en `src/data/projects.ts` (las imágenes van en `public/images/`)
-- **Colores:** variables en `:root` de `src/styles/global.css`
+Cada archivo en `src/pages/` se convierte en una página del sitio.
 
 ## Flujo de trabajo
 
