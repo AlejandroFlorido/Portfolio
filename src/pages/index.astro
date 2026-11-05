@@ -85,9 +85,11 @@ const base = import.meta.env.BASE_URL;
     import { startTopo } from "../scripts/topo";
     import { sfx } from "../scripts/sound";
     import { nodes } from "../data/nodes";
+    import { createCrew, type Pt } from "../scripts/cursors";
 
     const topo = startTopo(document.getElementById("topo") as HTMLCanvasElement);
     const body = document.body;
+    const stage = document.querySelector<HTMLElement>(".stage")!;
     const core = document.querySelector<HTMLButtonElement>("[data-core]")!;
     const status = document.querySelector<HTMLElement>("[data-status]")!;
     const clock = document.querySelector<HTMLElement>("[data-clock]")!;
@@ -142,34 +144,41 @@ const base = import.meta.env.BASE_URL;
     // ---------- Geometría de nodos y conexiones ----------
     interface Seg { x1: number; y1: number; x2: number; y2: number }
     const segs: Seg[] = [];
+    const targets: Pt[] = [];
+
+    // Conexión desde el borde del núcleo hasta un nodo en la posición relativa (x, y)
+    function segFor(x: number, y: number): Seg | null {
+      const c = { x: innerWidth / 2, y: innerHeight / 2 };
+      const dist = Math.hypot(x, y);
+      const inner = core.offsetWidth / 2 + 6;
+      if (dist < inner + 34) return null;
+      const ux = x / dist, uy = y / dist;
+      return { x1: c.x + ux * inner, y1: c.y + uy * inner, x2: c.x + x - ux * 30, y2: c.y + y - uy * 30 };
+    }
+
+    function drawLine(i: number, seg: Seg) {
+      const line = links[i];
+      line.setAttribute("x1", String(seg.x1));
+      line.setAttribute("y1", String(seg.y1));
+      line.setAttribute("x2", String(seg.x2));
+      line.setAttribute("y2", String(seg.y2));
+    }
 
     function layout() {
       const w = innerWidth, h = innerHeight;
       // Elipse: en pantallas verticales los nodos se separan más en altura
       const rx = Math.min(w * 0.36, h * 0.33);
       const ry = w < h ? Math.min(h * 0.27, w * 0.6) : Math.min(h * 0.3, w * 0.33);
-      const cx = w / 2, cy = h / 2;
-      const inner = core.offsetWidth / 2 + 6; // la línea arranca en el borde del núcleo
       nodeButtons.forEach((btn, i) => {
         const angle = -Math.PI / 2 + (i / nodeButtons.length) * Math.PI * 2;
         const x = Math.cos(angle) * rx;
         const y = Math.sin(angle) * ry;
         btn.style.setProperty("--x", `${x}px`);
         btn.style.setProperty("--y", `${y}px`);
-        const seg = {
-          x1: cx + Math.cos(angle) * inner,
-          y1: cy + Math.sin(angle) * inner,
-          x2: cx + x - Math.cos(angle) * 30,
-          y2: cy + y - Math.sin(angle) * 30,
-        };
+        targets[i] = { x, y };
+        const seg = segFor(x, y)!;
         segs[i] = seg;
-        const line = links[i];
-        line.setAttribute("x1", String(seg.x1));
-        line.setAttribute("y1", String(seg.y1));
-        line.setAttribute("x2", String(seg.x2));
-        line.setAttribute("y2", String(seg.y2));
-        const len = Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1);
-        line.style.setProperty("--len", String(len));
+        if (!links[i].classList.contains("is-dragging")) drawLine(i, seg);
       });
     }
     layout();
@@ -181,11 +190,10 @@ const base = import.meta.env.BASE_URL;
     function animatePackets(now: number) {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      const awake = body.classList.contains("is-awake");
       packetState.forEach((p) => {
         const seg = segs[p.i];
         const el = packets[p.i];
-        if (!seg || !awake) {
+        if (!seg || !body.classList.contains("is-awake") || !links[p.i].classList.contains("is-placed")) {
           el.style.opacity = "0";
           return;
         }
@@ -209,10 +217,33 @@ const base = import.meta.env.BASE_URL;
       packetState[i].burst = 1;
     }
 
+    // ---------- Punteros que arman la interfaz ----------
+    const crew = createCrew({
+      stage,
+      core,
+      nodes: nodeButtons,
+      codes: nodes.map((n) => n.code),
+      target: (i) => targets[i],
+      reduceMotion,
+      link(i, rel, placed) {
+        const line = links[i];
+        line.classList.toggle("is-placed", placed);
+        if (placed) {
+          line.classList.remove("is-dragging");
+          drawLine(i, segs[i]);
+          return;
+        }
+        const seg = rel && segFor(rel.x, rel.y);
+        line.classList.toggle("is-dragging", !!seg);
+        if (seg) drawLine(i, seg);
+      },
+    });
+
     // ---------- Estados ----------
     let bootTimer = 0;
 
     async function wake() {
+      body.classList.add("is-building");
       body.classList.add("is-booting");
       core.setAttribute("aria-expanded", "true");
       core.setAttribute("aria-label", "Núcleo activo. Volver a reposo");
@@ -225,12 +256,14 @@ const base = import.meta.env.BASE_URL;
         body.classList.remove("is-booting");
       }, reduceMotion ? 0 : 900);
       await setStatus("inicializando núcleo…");
-      if (!body.classList.contains("is-awake") && !body.classList.contains("is-booting")) return;
-      await setStatus("enlazando nodos…");
+      const built = crew.build();
+      await setStatus("agentes armando interfaz…");
+      await built;
+      body.classList.remove("is-building");
       if (body.classList.contains("is-awake")) setStatus(ONLINE);
     }
 
-    function sleep() {
+    async function sleep() {
       closePanel(false);
       clearTimeout(bootTimer);
       body.classList.remove("is-awake", "is-booting");
@@ -238,6 +271,10 @@ const base = import.meta.env.BASE_URL;
       core.setAttribute("aria-label", "Activar núcleo");
       sfx.sleep();
       topo.setIntensity(0.35);
+      body.classList.add("is-building");
+      setStatus("desarmando interfaz…");
+      await crew.unbuild();
+      body.classList.remove("is-building");
       setStatus("en reposo");
     }
 
@@ -282,7 +319,7 @@ const base = import.meta.env.BASE_URL;
 
     // ---------- Eventos ----------
     core.addEventListener("click", () => {
-      if (body.classList.contains("is-booting")) return;
+      if (body.classList.contains("is-booting") || body.classList.contains("is-building")) return;
       if (!body.classList.contains("is-awake")) wake();
       else if (body.classList.contains("has-panel")) closePanel();
       else sleep();
@@ -308,8 +345,7 @@ const base = import.meta.env.BASE_URL;
     // Si la URL trae una sección (#proyectos), abrir directamente
     const initial = location.hash.slice(1);
     if (nodes.some((n) => n.id === initial)) {
-      wake();
-      setTimeout(() => openPanel(initial), 1300);
+      wake().then(() => openPanel(initial));
     }
   </script>
 </Layout>
