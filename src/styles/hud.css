@@ -120,9 +120,14 @@ body.has-panel .stage {
   opacity: 0;
   transition: opacity 0.6s ease;
 }
-body.is-awake .links line {
+.links line.is-placed {
   opacity: 1;
   animation: flow 1.4s linear infinite;
+}
+.links line.is-dragging {
+  opacity: 0.55;
+  stroke-dasharray: 2 5;
+  transition: none;
 }
 .links line.is-active {
   stroke: var(--cyan);
@@ -220,10 +225,16 @@ body.is-awake .hint { visibility: hidden; animation: none; opacity: 0; }
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.2);
   transition:
-    transform 0.9s cubic-bezier(0.2, 0.9, 0.2, 1) var(--delay, 0s),
-    opacity 0.6s ease var(--delay, 0s);
+    transform 0.9s cubic-bezier(0.2, 0.9, 0.2, 1),
+    opacity 0.6s ease;
 }
-body.is-awake .node {
+/* Mientras un puntero lo arrastra, la posición la maneja JS */
+.node.is-driven {
+  transition: none;
+  opacity: var(--o, 1);
+  transform: translate(calc(-50% + var(--px, 0px)), calc(-50% + var(--py, 0px))) scale(var(--s, 1));
+}
+.node.is-placed {
   opacity: 1;
   pointer-events: auto;
   transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + var(--y, 0px))) scale(1);
@@ -474,15 +485,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
 }
 
 /* ---------- Conexiones ---------- */
-body.is-awake .links line {
-  animation:
-    draw 0.7s ease-out both,
-    flow 1.4s linear 0.7s infinite;
-}
-@keyframes draw {
-  from { stroke-dasharray: var(--len) var(--len); stroke-dashoffset: var(--len); }
-  to { stroke-dasharray: var(--len) var(--len); stroke-dashoffset: 0; }
-}
+
 .links line.is-hover {
   stroke: var(--cyan);
   stroke-width: 1.5;
@@ -495,7 +498,7 @@ body.is-awake .links line {
 }
 
 /* ---------- Nodos ---------- */
-body.is-awake .node__dot { animation: node-in 0.6s ease-out var(--delay, 0s) both; }
+.node.is-placed .node__dot { animation: node-in 0.6s ease-out both; }
 @keyframes node-in {
   0% { box-shadow: 0 0 0 0 rgba(80, 220, 255, 0.8); }
   100% { box-shadow: 0 0 0 22px rgba(80, 220, 255, 0); }
@@ -536,4 +539,92 @@ body.is-awake .node__dot { animation: node-in 0.6s ease-out var(--delay, 0s) bot
 @media (max-width: 720px) {
   .sound-toggle { right: 24px; bottom: 24px; }
   body.has-panel .sound-toggle { opacity: 0; pointer-events: none; }
+}
+
+/* =========================================================
+   Punteros (agentes) que arman y desarman la interfaz
+   ========================================================= */
+.agent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  will-change: transform;
+}
+.agent.is-on { opacity: 1; }
+.agent svg {
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  width: 14px;
+  height: 18px;
+  fill: var(--c);
+  stroke: rgba(3, 7, 13, 0.9);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 5px var(--c));
+  transform-origin: 1px 1px;
+}
+.agent.is-click svg { animation: agent-click 0.25s ease-out; }
+@keyframes agent-click {
+  50% { transform: scale(0.75); }
+}
+.agent__tag {
+  position: absolute;
+  left: 13px;
+  top: 16px;
+  padding: 1px 4px;
+  background: var(--c);
+  color: #03070d;
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+/* Caja de selección tipo editor que aparece al soltar/agarrar un nodo */
+.sel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+  border: 1px solid var(--c);
+  opacity: 0;
+}
+.sel i {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #03070d;
+  border: 1px solid var(--c);
+}
+.sel i:nth-child(1) { left: -3px; top: -3px; }
+.sel i:nth-child(2) { right: -3px; top: -3px; }
+.sel i:nth-child(3) { left: -3px; bottom: -3px; }
+.sel i:nth-child(4) { right: -3px; bottom: -3px; }
+.sel::after {
+  content: attr(data-size);
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: 0 4px;
+  background: var(--c);
+  color: #03070d;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.sel.is-flash { animation: sel-flash 0.9s ease-out; }
+@keyframes sel-flash {
+  0% { opacity: 0; }
+  15%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent, .sel { display: none; }
 }

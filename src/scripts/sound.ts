@@ -145,6 +145,13 @@ export const sfx = {
   close() {
     tone({ type: "triangle", from: 900, to: 300, duration: 0.2, volume: 0.07 });
   },
+  grab() {
+    tone({ type: "square", from: 1300, to: 1600, duration: 0.03, volume: 0.025 });
+  },
+  drop() {
+    tone({ type: "triangle", from: 320, to: 110, duration: 0.14, volume: 0.09 });
+    tone({ from: 1800, duration: 0.06, volume: 0.03, delay: 0.03 });
+  },
   type() {
     tone({ type: "square", from: 2400 + Math.random() * 400, duration: 0.015, volume: 0.012 });
   },
