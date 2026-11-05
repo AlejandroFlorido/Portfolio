@@ -650,7 +650,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
 /* =========================================================
    Nodo rojo para cerrar la sección (lo arman punteros rojos)
    ========================================================= */
-.agent--red {
+.agent--fixed {
   position: fixed;
   z-index: 6;
 }
@@ -733,4 +733,39 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   transform-origin: 0 0;
   pointer-events: none;
   opacity: 0;
+}
+
+/* =========================================================
+   Pantallas de sección armadas por punteros azules
+   ========================================================= */
+.agent--panel svg {
+  width: 11px;
+  height: 14px;
+}
+.agent--panel .agent__tag {
+  left: 10px;
+  top: 12px;
+  font-size: 0.45rem;
+}
+/* Con punteros, el panel no se desliza: lo revela el marco que dibujan (--pw/--ph) */
+.panel.panel--agents {
+  /* el desenfoque de fondo no respeta la máscara: se reemplaza por un fondo más opaco */
+  backdrop-filter: none;
+  background: rgba(4, 18, 28, 0.93);
+  transform: translate(0, -50%);
+  transition: opacity 0.3s ease;
+  -webkit-mask: linear-gradient(#000 0 0) no-repeat 0 0 / calc(var(--pw, 1) * 100%) calc(var(--ph, 1) * 100%);
+  mask: linear-gradient(#000 0 0) no-repeat 0 0 / calc(var(--pw, 1) * 100%) calc(var(--ph, 1) * 100%);
+}
+.panel__code { clip-path: inset(-4px calc((1 - var(--code, 1)) * 100%) -4px 0); }
+.panel__title { clip-path: inset(-6px calc((1 - var(--ttl, 1)) * 100%) -6px 0); }
+.panel__body { clip-path: inset(0 0 calc((1 - var(--body, 1)) * 100%) 0); }
+.sel--draft {
+  position: fixed;
+  z-index: 6;
+  --c: var(--cyan);
+}
+.sel--draft.is-drag { opacity: 1; }
+@media (max-width: 720px) {
+  .panel.panel--agents { transform: none; }
 }

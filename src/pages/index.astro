@@ -92,6 +92,7 @@ const base = import.meta.env.BASE_URL;
     import { nodes } from "../data/nodes";
     import { createCrew, type Pt } from "../scripts/cursors";
     import { createCloser } from "../scripts/closer";
+    import { createPanelCrew } from "../scripts/panel-crew";
 
     const topo = startTopo(document.getElementById("topo") as HTMLCanvasElement);
     const body = document.body;
@@ -255,6 +256,16 @@ const base = import.meta.env.BASE_URL;
       reduceMotion,
     });
 
+    // ---------- Punteros azules que arman la pantalla de cada sección ----------
+    const panelCrew = createPanelCrew({
+      panel,
+      code: panelCode,
+      title: panelTitle,
+      body: panelBody,
+      reduceMotion,
+    });
+    panelCrew.reset();
+
     // ---------- Estados ----------
     let bootTimer = 0;
 
@@ -295,6 +306,7 @@ const base = import.meta.env.BASE_URL;
     }
 
     let openTimer = 0;
+    let openTurn = 0;
     function openPanel(id: string) {
       const index = nodes.findIndex((n) => n.id === id);
       const node = nodes[index];
@@ -308,19 +320,25 @@ const base = import.meta.env.BASE_URL;
       topo.pulse(rect.left + rect.width / 2, rect.top + rect.height / 2, 0.6);
       setStatus(`abriendo ${node.label.toLowerCase()}…`);
       clearTimeout(openTimer);
-      openTimer = window.setTimeout(() => {
+      const turn = ++openTurn;
+      openTimer = window.setTimeout(async () => {
+        const fresh = !body.classList.contains("has-panel");
         panelCode.textContent = `${node.code} // acceso concedido`;
         panelBody.replaceChildren(tpl.content.cloneNode(true));
+        panelTitle.textContent = "";
+        panelCrew.prepare(fresh);
         panel.classList.remove("is-scanning");
         void panel.offsetWidth; // reinicia la animación de escaneo
         panel.classList.add("is-scanning");
-        const wasOpen = body.classList.contains("has-panel");
         body.classList.add("has-panel");
-        if (!wasOpen) closer.build();
-        typeInto(panelTitle, node.label, 45, true).then(() => {
-          if (body.classList.contains("has-panel")) setStatus(`nodo ${node.code} · activo`);
-        });
         history.replaceState(null, "", `#${id}`);
+        // Pantalla nueva: los azules dibujan el marco y después aparece el nodo rojo
+        if (fresh) {
+          if (!(await panelCrew.frameIn()) || turn !== openTurn || closing) return;
+          closer.build();
+        }
+        await panelCrew.fill(() => typeInto(panelTitle, node.label, 45, true));
+        if (turn === openTurn && !closing && body.classList.contains("has-panel")) setStatus(`nodo ${node.code} · activo`);
       }, reduceMotion ? 0 : 260);
     }
 
@@ -331,7 +349,11 @@ const base = import.meta.env.BASE_URL;
       closing = true;
       if (withSound) sfx.close();
       setStatus("cerrando sección…");
-      await closer.unbuild(); // los punteros rojos desarman el nodo y recién ahí se cierra
+      openTurn++;
+      // Los rojos desarman el nodo de cerrar mientras los azules borran la pantalla;
+      // al final el marco se pliega y recién ahí se cierra la sección
+      await Promise.all([closer.unbuild(), panelCrew.clear()]);
+      await panelCrew.collapse();
       closing = false;
       body.classList.remove("has-panel");
       nodeButtons.forEach((b) => b.classList.remove("is-active"));

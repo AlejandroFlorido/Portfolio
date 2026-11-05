@@ -4,17 +4,7 @@
 // para eso; no orbitan el núcleo.
 
 import { sfx } from "./sound";
-
-interface Pt {
-  x: number;
-  y: number;
-}
-
-interface Agent {
-  el: HTMLElement;
-  tag: HTMLElement;
-  pos: Pt;
-}
+import { createRunner, makeAgent, click, show, hide, lerp, type Pt } from "./agent-kit";
 
 interface CloserOptions {
   panel: HTMLElement;
@@ -23,28 +13,14 @@ interface CloserOptions {
   reduceMotion: boolean;
 }
 
-const ARROW = `<svg viewBox="0 0 14 18" aria-hidden="true"><path d="M1 1v14.5l3.8-3.6 2.7 6 2.4-1.1-2.7-5.8H13z"/></svg>`;
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
 export function createCloser(o: CloserOptions) {
-  let gen = 0;
   // Estado del nodo rojo: oculto, arrastrado por un puntero, o en su lugar
   const node = { mode: "hidden" as "hidden" | "driven" | "placed", pos: { x: 0, y: 0 }, s: 1, op: 0 };
   const dot = o.button.querySelector<HTMLElement>(".closer__dot")!;
   const label = o.button.querySelector<HTMLElement>(".closer__label")!;
 
-  function makeAgent(color: string): Agent {
-    const el = document.createElement("div");
-    el.className = "agent agent--red";
-    el.setAttribute("aria-hidden", "true");
-    el.style.setProperty("--c", color);
-    el.innerHTML = `${ARROW}<span class="agent__tag"></span>`;
-    document.body.append(el);
-    return { el, tag: el.querySelector<HTMLElement>(".agent__tag")!, pos: { x: 0, y: 0 } };
-  }
-  const mover = makeAgent("#ff4d5e");
-  const smith = makeAgent("#ff8f80");
+  const mover = makeAgent("#ff4d5e", "agent--red");
+  const smith = makeAgent("#ff8f80", "agent--red");
 
   // Esquina del panel de donde "sale" el nodo, y lugar donde queda
   function anchor(): Pt {
@@ -93,68 +69,8 @@ export function createCloser(o: CloserOptions) {
     o.button.style.setProperty(`--${part}`, String(Math.max(0, Math.min(1, v))));
   }
 
-  // ---------- Utilidades de animación ----------
-  function tween(dur: number, fn: (t: number) => void, g: number) {
-    return new Promise<boolean>((resolve) => {
-      const t0 = performance.now();
-      const step = (now: number) => {
-        if (g !== gen) return resolve(false);
-        const t = Math.min((now - t0) / dur, 1);
-        fn(t);
-        if (t < 1) requestAnimationFrame(step);
-        else resolve(true);
-      };
-      requestAnimationFrame(step);
-    });
-  }
-
-  function render(a: Agent) {
-    a.el.style.transform = `translate3d(${a.pos.x}px, ${a.pos.y}px, 0)`;
-  }
-
-  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void) {
-    const from = { ...a.pos };
-    return tween(
-      dur,
-      (t) => {
-        const e = easeInOut(t);
-        const p = to();
-        a.pos = { x: lerp(from.x, p.x, e), y: lerp(from.y, p.y, e) };
-        render(a);
-        onT?.(e);
-      },
-      g,
-    );
-  }
-
-  function trace(a: Agent, dur: number, g: number, path: (t: number) => Pt, work: (t: number) => void) {
-    return tween(
-      dur,
-      (t) => {
-        const e = easeInOut(t);
-        a.pos = path(e);
-        render(a);
-        work(e);
-      },
-      g,
-    );
-  }
-
-  function click(a: Agent) {
-    a.el.classList.remove("is-click");
-    void a.el.offsetWidth;
-    a.el.classList.add("is-click");
-  }
-
-  function show(a: Agent, at: Pt, tag: string) {
-    a.pos = at;
-    render(a);
-    a.tag.textContent = tag;
-    a.el.classList.add("is-on", "is-tagged");
-  }
-  function hide(a: Agent) {
-    a.el.classList.remove("is-on", "is-tagged");
-  }
+  const R = createRunner();
+  const { tween, go, trace } = R;
 
   const dotCenter = () => spot();
   const ringAt = (ang: number) => {
@@ -194,7 +110,7 @@ export function createCloser(o: CloserOptions) {
   return {
     /** Arma el nodo rojo (al abrir una sección). */
     async build() {
-      const g = ++gen;
+      const g = R.next();
       if (o.reduceMotion) {
         ["core", "ring", "txt"].forEach((p) => setPart(p as "core", 1));
         setMode("placed");
@@ -251,7 +167,7 @@ export function createCloser(o: CloserOptions) {
 
     /** Desarma el nodo rojo (al cerrar la sección). Resuelve cuando terminó. */
     async unbuild() {
-      const g = ++gen;
+      const g = R.next();
       if (o.reduceMotion || node.mode !== "placed") {
         reset();
         return;
@@ -300,7 +216,7 @@ export function createCloser(o: CloserOptions) {
 
     /** Lo saca sin animación (por ejemplo, si se apaga todo de golpe). */
     reset() {
-      gen++;
+      R.next();
       reset();
     },
   };
