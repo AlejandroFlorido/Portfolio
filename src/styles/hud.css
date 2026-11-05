@@ -646,3 +646,91 @@ body.is-awake .core__heart { animation-name: heartbeat; }
 @media (prefers-reduced-motion: reduce) {
   .agent, .sel { display: none; }
 }
+
+/* =========================================================
+   Nodo rojo para cerrar la sección (lo arman punteros rojos)
+   ========================================================= */
+.agent--red {
+  position: fixed;
+  z-index: 6;
+}
+.closer {
+  --red: #ff4d5e;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: var(--o, 0);
+  pointer-events: none;
+  transform: translate(var(--px, 0px), var(--py, 0px)) translate(-15px, -15px) scale(var(--s, 1));
+  transform-origin: 15px 15px;
+}
+.closer.is-placed { pointer-events: auto; }
+.closer__dot {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--red);
+  background: rgba(30, 4, 8, 0.85);
+  box-shadow: 0 0 14px rgba(255, 77, 94, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.closer__dot::before {
+  content: "";
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+  opacity: calc(var(--core, 1) * 0.85);
+  transform: scale(var(--core, 1));
+}
+.closer__dot::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 77, 94, 0.65);
+  -webkit-mask: conic-gradient(#000 calc(var(--ring, 1) * 360deg), transparent 0);
+  mask: conic-gradient(#000 calc(var(--ring, 1) * 360deg), transparent 0);
+  animation: spin 10s linear infinite;
+}
+.closer__label {
+  font-size: 0.62rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #ff8f80;
+  white-space: nowrap;
+  clip-path: inset(-4px calc((1 - var(--txt, 1)) * 100%) -4px 0);
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+.closer:hover .closer__dot,
+.closer:focus-visible .closer__dot {
+  transform: scale(1.15);
+  box-shadow: 0 0 24px rgba(255, 77, 94, 0.75);
+}
+.closer:hover .closer__label,
+.closer:focus-visible .closer__label {
+  color: #ffd0cb;
+  text-shadow: 0 0 10px rgba(255, 77, 94, 0.8);
+}
+.closer__link {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  height: 0;
+  border-top: 1px dashed rgba(255, 77, 94, 0.7);
+  transform-origin: 0 0;
+  pointer-events: none;
+  opacity: 0;
+}

@@ -68,10 +68,15 @@ const base = import.meta.env.BASE_URL;
         <p class="panel__code" data-panel-code></p>
         <h2 class="panel__title" id="panel-title" data-panel-title></h2>
       </div>
-      <button class="panel__close" type="button" aria-label="Cerrar sección" data-panel-close>✕</button>
     </div>
     <div class="panel__body" data-panel-body></div>
   </aside>
+
+  <span class="closer__link" aria-hidden="true" data-closer-link></span>
+  <button class="closer" type="button" aria-label="Cerrar sección" data-panel-close>
+    <span class="closer__dot" aria-hidden="true"></span>
+    <span class="closer__label">Cerrar</span>
+  </button>
 
   {
     nodes.map((node) => (
@@ -86,6 +91,7 @@ const base = import.meta.env.BASE_URL;
     import { sfx } from "../scripts/sound";
     import { nodes } from "../data/nodes";
     import { createCrew, type Pt } from "../scripts/cursors";
+    import { createCloser } from "../scripts/closer";
 
     const topo = startTopo(document.getElementById("topo") as HTMLCanvasElement);
     const body = document.body;
@@ -241,6 +247,14 @@ const base = import.meta.env.BASE_URL;
       },
     });
 
+    // ---------- Nodo rojo para cerrar, con sus punteros rojos ----------
+    const closer = createCloser({
+      panel,
+      button: document.querySelector<HTMLElement>("[data-panel-close]")!,
+      link: document.querySelector<HTMLElement>("[data-closer-link]")!,
+      reduceMotion,
+    });
+
     // ---------- Estados ----------
     let bootTimer = 0;
 
@@ -266,7 +280,7 @@ const base = import.meta.env.BASE_URL;
     }
 
     async function sleep() {
-      closePanel(false);
+      await closePanel(false);
       clearTimeout(bootTimer);
       body.classList.remove("is-awake", "is-booting");
       core.setAttribute("aria-expanded", "false");
@@ -285,7 +299,7 @@ const base = import.meta.env.BASE_URL;
       const index = nodes.findIndex((n) => n.id === id);
       const node = nodes[index];
       const tpl = document.querySelector<HTMLTemplateElement>(`template[data-content="${id}"]`);
-      if (!node || !tpl) return;
+      if (!node || !tpl || closing) return;
       sfx.open();
       firePacket(index);
       nodeButtons.forEach((b) => b.classList.toggle("is-active", b.dataset.node === id));
@@ -300,7 +314,9 @@ const base = import.meta.env.BASE_URL;
         panel.classList.remove("is-scanning");
         void panel.offsetWidth; // reinicia la animación de escaneo
         panel.classList.add("is-scanning");
+        const wasOpen = body.classList.contains("has-panel");
         body.classList.add("has-panel");
+        if (!wasOpen) closer.build();
         typeInto(panelTitle, node.label, 45, true).then(() => {
           if (body.classList.contains("has-panel")) setStatus(`nodo ${node.code} · activo`);
         });
@@ -308,10 +324,15 @@ const base = import.meta.env.BASE_URL;
       }, reduceMotion ? 0 : 260);
     }
 
-    function closePanel(withSound = true) {
+    let closing = false;
+    async function closePanel(withSound = true) {
       clearTimeout(openTimer);
-      if (!body.classList.contains("has-panel")) return;
+      if (!body.classList.contains("has-panel") || closing) return;
+      closing = true;
       if (withSound) sfx.close();
+      setStatus("cerrando sección…");
+      await closer.unbuild(); // los punteros rojos desarman el nodo y recién ahí se cierra
+      closing = false;
       body.classList.remove("has-panel");
       nodeButtons.forEach((b) => b.classList.remove("is-active"));
       links.forEach((l) => l.classList.remove("is-active"));
@@ -321,7 +342,7 @@ const base = import.meta.env.BASE_URL;
 
     // ---------- Eventos ----------
     core.addEventListener("click", () => {
-      if (body.classList.contains("is-booting") || body.classList.contains("is-building")) return;
+      if (body.classList.contains("is-booting") || body.classList.contains("is-building") || closing) return;
       if (!body.classList.contains("is-awake")) wake();
       else if (body.classList.contains("has-panel")) closePanel();
       else sleep();
