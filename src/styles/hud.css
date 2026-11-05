@@ -125,8 +125,9 @@ body.has-panel .stage {
   animation: flow 1.4s linear infinite;
 }
 .links line.is-dragging {
-  opacity: 0.55;
-  stroke-dasharray: 2 5;
+  opacity: 0.9;
+  stroke: var(--cyan);
+  stroke-dasharray: none;
   transition: none;
 }
 .links line.is-active {
@@ -245,18 +246,33 @@ body.is-awake .hint { visibility: hidden; animation: none; opacity: 0; }
   height: 54px;
   border-radius: 50%;
   border: 1px solid var(--cyan-soft);
-  background: radial-gradient(circle, rgba(80, 220, 255, 0.35) 0 22%, rgba(4, 18, 28, 0.85) 24%);
+  background: rgba(4, 18, 28, 0.85);
   box-shadow: 0 0 18px rgba(80, 220, 255, 0.25);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+/* Partes del nodo que arman los punteros (--core, --ring, --txt, --code van de 0 a 1) */
+.node__dot::before {
+  content: "";
+  position: absolute;
+  inset: 28%;
+  border-radius: 50%;
+  background: rgba(80, 220, 255, 0.35);
+  box-shadow: 0 0 10px rgba(80, 220, 255, 0.5);
+  transform: scale(var(--core, 1));
+  opacity: var(--core, 1);
 }
 .node__dot::after {
   content: "";
   position: absolute;
   inset: -8px;
   border-radius: 50%;
-  border: 1px dashed var(--cyan-faint);
+  border: 1px dashed var(--cyan-soft);
+  -webkit-mask: conic-gradient(#000 calc(var(--ring, 1) * 360deg), transparent 0);
+  mask: conic-gradient(#000 calc(var(--ring, 1) * 360deg), transparent 0);
   animation: spin 14s linear infinite;
 }
+.node__label { clip-path: inset(-4px calc((1 - var(--txt, 1)) * 100%) -4px 0); }
+.node__code { clip-path: inset(-4px calc((1 - var(--code, 1)) * 100%) -4px 0); }
 .node:hover .node__dot,
 .node:focus-visible .node__dot,
 .node.is-active .node__dot {
@@ -572,6 +588,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   50% { transform: scale(0.75); }
 }
 .agent__tag {
+  display: none;
   position: absolute;
   left: 13px;
   top: 16px;
@@ -583,6 +600,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   white-space: nowrap;
   opacity: 0.85;
 }
+.agent.is-tagged .agent__tag { display: block; }
 
 /* Caja de selección tipo editor que aparece al soltar/agarrar un nodo */
 .sel {
@@ -591,7 +609,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   top: 0;
   z-index: 3;
   pointer-events: none;
-  border: 1px solid var(--c);
+  border: 1px solid var(--c, var(--cyan));
   opacity: 0;
 }
 .sel i {
@@ -599,7 +617,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   width: 5px;
   height: 5px;
   background: #03070d;
-  border: 1px solid var(--c);
+  border: 1px solid var(--c, var(--cyan));
 }
 .sel i:nth-child(1) { left: -3px; top: -3px; }
 .sel i:nth-child(2) { right: -3px; top: -3px; }
@@ -612,7 +630,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   top: calc(100% + 4px);
   transform: translateX(-50%);
   padding: 0 4px;
-  background: var(--c);
+  background: var(--c, var(--cyan));
   color: #03070d;
   font-size: 0.5rem;
   letter-spacing: 0.08em;

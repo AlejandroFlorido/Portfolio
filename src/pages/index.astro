@@ -225,17 +225,19 @@ const base = import.meta.env.BASE_URL;
       codes: nodes.map((n) => n.code),
       target: (i) => targets[i],
       reduceMotion,
-      link(i, rel, placed) {
+      segment: (i) => segs[i],
+      link(i, p) {
         const line = links[i];
-        line.classList.toggle("is-placed", placed);
-        if (placed) {
-          line.classList.remove("is-dragging");
-          drawLine(i, segs[i]);
-          return;
-        }
-        const seg = rel && segFor(rel.x, rel.y);
-        line.classList.toggle("is-dragging", !!seg);
-        if (seg) drawLine(i, seg);
+        const seg = segs[i];
+        line.classList.toggle("is-placed", p === 1);
+        line.classList.toggle("is-dragging", p !== null && p < 1);
+        if (p === null) return;
+        drawLine(i, {
+          x1: seg.x1,
+          y1: seg.y1,
+          x2: seg.x1 + (seg.x2 - seg.x1) * p,
+          y2: seg.y1 + (seg.y2 - seg.y1) * p,
+        });
       },
     });
 
