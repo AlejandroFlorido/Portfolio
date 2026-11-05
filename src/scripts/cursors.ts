@@ -50,7 +50,7 @@ const TAGS: Record<Exclude<Role, "mov">, string> = {
   link: "ENLACE",
   txt: "TEXTO",
 };
-const ARROW = `<svg viewBox="0 0 14 18" aria-hidden="true"><path d="M1 1v14.5l3.8-3.6 2.7 6 2.4-1.1-2.7-5.8H13z"/></svg>`;
+const ARROW = `<svg viewBox="0 0 16 18" aria-hidden="true"><path d="M1.5 1.5 4 16.5l3-5.2h7.5z"/></svg>`;
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);

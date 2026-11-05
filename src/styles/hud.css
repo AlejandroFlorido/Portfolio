@@ -575,12 +575,14 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   position: absolute;
   left: -1px;
   top: -1px;
-  width: 14px;
+  width: 16px;
   height: 18px;
-  fill: var(--c);
-  stroke: rgba(3, 7, 13, 0.9);
-  stroke-width: 1;
-  filter: drop-shadow(0 0 5px var(--c));
+  /* Flecha de contorno: borde del color del puntero y relleno oscuro */
+  fill: rgba(3, 7, 13, 0.75);
+  stroke: var(--c);
+  stroke-width: 1.4;
+  stroke-linejoin: miter;
+  filter: drop-shadow(0 0 4px var(--c));
   transform-origin: 1px 1px;
 }
 .agent.is-click svg { animation: agent-click 0.25s ease-out; }
@@ -739,7 +741,7 @@ body.is-awake .core__heart { animation-name: heartbeat; }
    Pantallas de sección armadas por punteros azules
    ========================================================= */
 .agent--panel svg {
-  width: 11px;
+  width: 12px;
   height: 14px;
 }
 .agent--panel .agent__tag {
