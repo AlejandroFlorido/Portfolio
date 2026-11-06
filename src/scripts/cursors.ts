@@ -521,6 +521,28 @@ export function createCrew(o: CrewOptions) {
   }
 
   return {
+    /** Posición de un puntero que está orbitando (null si está ocupado u oculto). */
+    preyAt(i: number): Pt | null {
+      const a = all[i];
+      return a && a.mode === "orbit" ? a.pos : null;
+    },
+    preyCount: () => all.length,
+    /** Un rojo lo empuja: sale despedido, acelera y a veces cambia de sentido. */
+    poke(i: number, from: Pt) {
+      const a = all[i];
+      if (!a || a.mode !== "orbit") return;
+      const dx = a.pos.x - from.x;
+      const dy = a.pos.y - from.y;
+      const d = Math.hypot(dx, dy) || 1;
+      a.jx += (dx / d) * 34;
+      a.jy += (dy / d) * 34;
+      a.tx = (dx / d) * 48;
+      a.ty = (dy / d) * 48;
+      a.surge = 1;
+      a.nextJump = performance.now() / 1000 + 0.45;
+      if (Math.random() < 0.35) a.speed = -a.speed;
+      click(a);
+    },
     async build() {
       const g = ++gen;
       if (o.reduceMotion) {
