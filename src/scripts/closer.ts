@@ -1,13 +1,24 @@
 // Nodo rojo para cerrar la pestaña abierta. Dos punteros rojos lo arman cuando
 // se abre una sección (lo sacan del panel, le llenan el núcleo, le dibujan la
-// órbita y escriben "Cerrar") y lo desarman cuando se cierra. Solo aparecen
-// para eso; no orbitan el núcleo.
+// órbita y escriben "Cerrar") y lo desarman cuando se cierra.
+// Mientras tanto merodean: con el núcleo apagado orbitan el núcleo y se tiran
+// encima de los punteros cian para molestarlos; con una sección abierta
+// quedan dando vueltas alrededor de la pantalla. Al activar el núcleo se van.
 
 import { sfx } from "./sound";
-import { createRunner, makeAgent, click, show, hide, lerp, type Pt } from "./agent-kit";
+import { createRunner, makeAgent, render, click, show, hide, lerp, type Pt } from "./agent-kit";
+
+/** Punteros cian a los que los rojos molestan cuando orbitan el núcleo. */
+export interface Prey {
+  preyCount(): number;
+  preyAt(i: number): Pt | null;
+  poke(i: number, from: Pt): void;
+}
 
 interface CloserOptions {
   panel: HTMLElement;
+  core: HTMLElement;
+  prey: Prey;
   button: HTMLElement;
   link: HTMLElement;
   reduceMotion: boolean;
@@ -102,7 +113,167 @@ export function createCloser(o: CloserOptions) {
     );
   }
 
+  // ---------- Merodeo: orbitan de forma errática el núcleo o la pantalla ----------
+  type Roam = "none" | "core" | "panel";
+  let roam: Roam = "none";
+  interface Pest {
+    a: typeof mover;
+    angle: number;
+    speed: number;
+    jx: number;
+    jy: number;
+    tx: number;
+    ty: number;
+    nextJump: number;
+    surge: number;
+    nextDash: number;
+    dash: null | { i: number; corner: number; until: number };
+  }
+  const pests: Pest[] = [mover, smith].map((a, k) => ({
+    a,
+    angle: k * Math.PI + Math.random(),
+    speed: (1.1 + Math.random() * 0.6) * (k ? -1 : 1),
+    jx: 0,
+    jy: 0,
+    tx: 0,
+    ty: 0,
+    nextJump: 0,
+    surge: 0,
+    nextDash: 0,
+    dash: null,
+  }));
+
+  function roamPoint(p: Pest, time: number): Pt {
+    if (roam === "core") {
+      const r = o.core.getBoundingClientRect();
+      const rad = r.width / 2 + 70 + Math.sin(time * 2.7 + p.angle) * 26;
+      return {
+        x: r.left + r.width / 2 + Math.cos(p.angle) * rad * 1.15 + p.jx,
+        y: r.top + r.height / 2 + Math.sin(p.angle) * rad * 0.92 + p.jy,
+      };
+    }
+    const r = o.panel.getBoundingClientRect();
+    const rx = r.width / 2 + 24 + Math.sin(time * 3.1 + p.angle) * 14;
+    const ry = r.height / 2 + 22 + Math.cos(time * 2.3 + p.angle) * 12;
+    const x = r.left + r.width / 2 + Math.cos(p.angle) * rx + p.jx;
+    const y = r.top + r.height / 2 + Math.sin(p.angle) * ry + p.jy;
+    return { x: Math.max(6, Math.min(innerWidth - 14, x)), y: Math.max(6, Math.min(innerHeight - 18, y)) };
+  }
+
+  // A qué se tiran: un puntero cian (núcleo) o una esquina / el nodo rojo (pantalla)
+  function dashTarget(p: Pest): Pt | null {
+    const d = p.dash!;
+    if (roam === "core") return o.prey.preyAt(d.i);
+    if (d.corner === 4) return spot();
+    const r = o.panel.getBoundingClientRect();
+    return { x: d.corner % 2 ? r.right - 4 : r.left + 4, y: d.corner < 2 ? r.top + 4 : r.bottom - 4 };
+  }
+
+  function startDash(p: Pest, time: number) {
+    if (roam === "core") {
+      const n = o.prey.preyCount();
+      // Elige al cian que esté más cerca entre unos cuantos al azar
+      let best = -1;
+      let bestD = Infinity;
+      for (let k = 0; k < 6; k++) {
+        const i = Math.floor(Math.random() * n);
+        const q = o.prey.preyAt(i);
+        if (!q) continue;
+        const dd = Math.hypot(q.x - p.a.pos.x, q.y - p.a.pos.y);
+        if (dd < bestD) {
+          bestD = dd;
+          best = i;
+        }
+      }
+      if (best < 0) return;
+      p.dash = { i: best, corner: 0, until: time + 0.7 };
+    } else {
+      p.dash = { i: 0, corner: Math.floor(Math.random() * 5), until: time + 0.6 };
+    }
+  }
+
+  let lastT = performance.now();
+  function roamLoop(now: number) {
+    const dt = Math.min((now - lastT) / 1000, 0.05);
+    lastT = now;
+    const time = now / 1000;
+    if (roam !== "none") {
+      for (const p of pests) {
+        if (time > p.nextJump) {
+          p.nextJump = time + 0.06 + Math.random() * 0.35;
+          p.tx = (Math.random() - 0.5) * 70;
+          p.ty = (Math.random() - 0.5) * 56;
+          if (Math.random() < 0.5) p.surge = 1;
+          if (Math.random() < 0.12) p.speed = -p.speed;
+        }
+        p.jx += (p.tx - p.jx) * Math.min(1, dt * 16);
+        p.jy += (p.ty - p.jy) * Math.min(1, dt * 16);
+        p.surge = Math.max(0, p.surge - dt * 3);
+        p.angle += p.speed * dt * (1 + 0.8 * Math.sin(time * 3.7 + p.speed) + p.surge * 3);
+
+        let goal = roamPoint(p, time);
+        let k = dt * 9;
+        if (p.dash) {
+          const t = dashTarget(p);
+          if (!t || time > p.dash.until) {
+            p.dash = null;
+            p.nextDash = time + 0.3 + Math.random() * 1.2;
+          } else {
+            goal = t;
+            k = dt * 16;
+            if (Math.hypot(t.x - p.a.pos.x, t.y - p.a.pos.y) < 16) {
+              click(p.a);
+              if (roam === "core") o.prey.poke(p.dash.i, p.a.pos);
+              p.dash = null;
+              p.surge = 1;
+              p.tx = (Math.random() - 0.5) * 120;
+              p.ty = (Math.random() - 0.5) * 100;
+              p.nextDash = time + 0.35 + Math.random() * 1.3;
+            }
+          }
+        } else if (time > p.nextDash) {
+          startDash(p, time);
+        }
+        const j = 3.5;
+        p.a.pos = {
+          x: lerp(p.a.pos.x, goal.x, Math.min(1, k)) + (Math.random() - 0.5) * j,
+          y: lerp(p.a.pos.y, goal.y, Math.min(1, k)) + (Math.random() - 0.5) * j,
+        };
+        render(p.a);
+      }
+    }
+    requestAnimationFrame(roamLoop);
+  }
+  requestAnimationFrame(roamLoop);
+
+  function startRoam(mode: Exclude<Roam, "none">) {
+    const time = performance.now() / 1000;
+    for (const p of pests) {
+      p.dash = null;
+      p.nextDash = time + 0.4 + Math.random() * 0.8;
+      // Si no estaban a la vista, entran desde algún lugar cerca de la órbita
+      if (!p.a.el.classList.contains("is-on")) {
+        roam = mode;
+        const q = roamPoint(p, time);
+        p.a.pos = { x: q.x + (Math.random() - 0.5) * 80, y: q.y + (Math.random() - 0.5) * 80 };
+        render(p.a);
+      }
+      p.a.el.classList.add("is-on");
+      p.a.el.classList.remove("is-tagged");
+    }
+    roam = mode;
+  }
+
+  /** Muestra al puntero para una tarea; si ya merodeaba, sigue desde donde está. */
+  function enter(a: typeof mover, at: Pt, tag: string) {
+    if (a.el.classList.contains("is-on")) {
+      a.tag.textContent = tag;
+      a.el.classList.add("is-tagged");
+    } else show(a, at, tag);
+  }
+
   function reset() {
+    roam = "none";
     setMode("hidden");
     hide(mover);
     hide(smith);
@@ -117,11 +288,12 @@ export function createCloser(o: CloserOptions) {
         setMode("placed");
         return;
       }
+      roam = "none";
       (["core", "ring", "txt"] as const).forEach((p) => setPart(p, 0));
       setMode("hidden");
       const a0 = anchor();
-      show(mover, { x: a0.x + 60, y: a0.y + 70 }, "SALIDA");
-      show(smith, { x: a0.x + 110, y: a0.y + 40 }, "NÚCLEO");
+      enter(mover, { x: a0.x + 60, y: a0.y + 70 }, "SALIDA");
+      enter(smith, { x: a0.x + 110, y: a0.y + 40 }, "NÚCLEO");
 
       // 1. MOV agarra el nodo en la esquina del panel y lo saca
       if (!(await go(mover, anchor, 380, g))) return;
@@ -162,8 +334,8 @@ export function createCloser(o: CloserOptions) {
       })();
       const done = await Promise.all([forge, write]);
       if (!done.every(Boolean)) return;
-      hide(mover);
-      hide(smith);
+      // Terminado el nodo, se quedan merodeando alrededor de la pantalla
+      startRoam("panel");
     },
 
     /** Desarma el nodo rojo (al cerrar la sección). Resuelve cuando terminó. */
@@ -173,10 +345,11 @@ export function createCloser(o: CloserOptions) {
         reset();
         return;
       }
+      roam = "none";
       o.button.classList.remove("is-placed");
       const c = spot();
-      show(mover, { x: c.x + 70, y: c.y + 50 }, "TEXTO");
-      show(smith, { x: c.x + 40, y: c.y + 70 }, "ÓRBITA");
+      enter(mover, { x: c.x + 70, y: c.y + 50 }, "TEXTO");
+      enter(smith, { x: c.x + 40, y: c.y + 70 }, "ÓRBITA");
 
       // 1. Borran el texto, desenrollan la órbita y vacían el núcleo
       const erase = (async () => {
@@ -219,6 +392,21 @@ export function createCloser(o: CloserOptions) {
     reset() {
       R.next();
       reset();
+    },
+
+    /** Con el núcleo apagado: orbitan el núcleo molestando a los cian. */
+    roamCore() {
+      if (o.reduceMotion || node.mode !== "hidden") return;
+      R.next();
+      startRoam("core");
+    },
+
+    /** Al activar el núcleo desaparecen (hasta que se abra una sección). */
+    leave() {
+      if (roam !== "core") return;
+      roam = "none";
+      hide(mover);
+      hide(smith);
     },
   };
 }

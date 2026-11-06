@@ -253,6 +253,8 @@ const base = import.meta.env.BASE_URL;
       panel,
       button: document.querySelector<HTMLElement>("[data-panel-close]")!,
       link: document.querySelector<HTMLElement>("[data-closer-link]")!,
+      core,
+      prey: crew,
       reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
     });
 
@@ -265,11 +267,13 @@ const base = import.meta.env.BASE_URL;
       reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
     });
     panelCrew.reset();
+    closer.roamCore();
 
     // ---------- Estados ----------
     let bootTimer = 0;
 
     async function wake() {
+      closer.leave();
       body.classList.add("is-building");
       body.classList.add("is-booting");
       core.setAttribute("aria-expanded", "true");
@@ -303,6 +307,7 @@ const base = import.meta.env.BASE_URL;
       await crew.unbuild();
       body.classList.remove("is-building");
       setStatus("en reposo");
+      if (!body.classList.contains("is-awake")) closer.roamCore();
     }
 
     let openTimer = 0;
