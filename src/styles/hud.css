@@ -813,3 +813,9 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   .copyright__rest { display: none; }
   body.has-panel .copyright { opacity: 0; }
 }
+
+/* Nodo que el puntero amarillo acaba de revisar */
+.node.is-checked .node__dot {
+  border-color: #ffd84a;
+  box-shadow: 0 0 0 4px rgba(255, 216, 74, 0.18), 0 0 22px rgba(255, 216, 74, 0.45);
+}
