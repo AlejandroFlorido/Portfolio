@@ -260,6 +260,7 @@ const base = import.meta.env.BASE_URL;
       link: document.querySelector<HTMLElement>("[data-closer-link]")!,
       core,
       prey: crew,
+      avoid: () => keeper.position(),
       reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
     });
 
@@ -275,13 +276,12 @@ const base = import.meta.env.BASE_URL;
     closer.roamCore();
 
     // ---------- Puntero amarillo: pone el copyright al pie, esquivando a los rojos ----------
-    createKeeper({
+    const keeper = createKeeper({
       footer: document.querySelector<HTMLElement>("[data-copyright]")!,
       core,
       asleep: () => !body.classList.contains("is-awake") && !body.classList.contains("is-booting"),
       nodes: nodeButtons,
       patrolling: () => body.classList.contains("is-awake") && !body.classList.contains("is-building"),
-      threats: () => closer.threats(),
     });
 
     // ---------- Estados ----------

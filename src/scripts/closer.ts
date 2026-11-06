@@ -19,10 +19,15 @@ interface CloserOptions {
   panel: HTMLElement;
   core: HTMLElement;
   prey: Prey;
+  /** Posición del puntero amarillo: los rojos lo esquivan siempre. */
+  avoid?: () => Pt | null;
   button: HTMLElement;
   link: HTMLElement;
   reduceMotion: boolean;
 }
+
+const KEEP_AWAY = 120; // distancia que respetan al amarillo
+const MIN_GAP = 70; // nunca se le acercan más que esto
 
 export function createCloser(o: CloserOptions) {
   // Estado del nodo rojo: oculto, arrastrado por un puntero, o en su lugar
@@ -234,11 +239,30 @@ export function createCloser(o: CloserOptions) {
         } else if (time > p.nextDash) {
           startDash(p, time);
         }
+        const y = o.avoid?.();
+        if (y) {
+          // Si el objetivo cae cerca del amarillo, se corre: a ese no lo molestan
+          const gx = goal.x - y.x;
+          const gy = goal.y - y.y;
+          const gd = Math.hypot(gx, gy) || 0.01;
+          if (gd < KEEP_AWAY) goal = { x: y.x + (gx / gd) * KEEP_AWAY, y: y.y + (gy / gd) * KEEP_AWAY };
+          if (p.dash && gd < KEEP_AWAY) {
+            p.dash = null;
+            p.nextDash = time + 0.4 + Math.random();
+          }
+        }
         const j = 3.5;
         p.a.pos = {
           x: lerp(p.a.pos.x, goal.x, Math.min(1, k)) + (Math.random() - 0.5) * j,
           y: lerp(p.a.pos.y, goal.y, Math.min(1, k)) + (Math.random() - 0.5) * j,
         };
+        if (y) {
+          // Nunca se le acercan más de MIN_GAP: si quedan muy cerca, se apartan
+          const dx = p.a.pos.x - y.x;
+          const dy = p.a.pos.y - y.y;
+          const d = Math.hypot(dx, dy) || 0.01;
+          if (d < MIN_GAP) p.a.pos = { x: y.x + (dx / d) * MIN_GAP, y: y.y + (dy / d) * MIN_GAP };
+        }
         render(p.a);
       }
     }

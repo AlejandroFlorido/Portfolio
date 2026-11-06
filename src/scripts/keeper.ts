@@ -1,5 +1,5 @@
 // Un único puntero amarillo, el "sano": se mueve tranquilo y en línea recta,
-// sin temblar, esquiva a los punteros rojos y se encarga de poner el aviso de
+// sin temblar (los rojos lo esquivan a él) y se encarga de poner el aviso de
 // copyright al pie de la página. Después orbita el núcleo junto a los demás
 // mientras está apagado; con el núcleo activo hace la ronda por los nodos,
 // dando una vuelta alrededor de cada uno para "controlar" que esté todo bien.
@@ -17,7 +17,7 @@ interface KeeperOptions {
   /** true cuando el núcleo está activo y la interfaz ya terminó de armarse. */
   patrolling: () => boolean;
   /** Posiciones actuales de los punteros rojos (para esquivarlos). */
-  threats: () => Pt[];
+  threats?: () => Pt[];
   delay?: number;
 }
 
@@ -158,7 +158,7 @@ export function createKeeper(o: KeeperOptions) {
 
       // Esquivar a los rojos: se aleja de cada uno que se acerque (y de hacia dónde va)
       let danger = 0;
-      const now2 = o.threats();
+      const now2 = o.threats?.() ?? [];
       const seen = now2.map((t, i) => {
         // Anticipa: mira dónde va a estar el rojo en un instante
         const p = prev[i] ?? t;
@@ -237,4 +237,11 @@ export function createKeeper(o: KeeperOptions) {
     show(a, { x: innerWidth * 0.78, y: innerHeight + 10 }, "COPYRIGHT");
     phase = "approach";
   }, o.delay ?? 1400);
+
+  return {
+    /** Dónde está el amarillo (null si todavía no apareció). */
+    position(): Pt | null {
+      return phase === "off" ? null : a.pos;
+    },
+  };
 }
