@@ -774,3 +774,42 @@ body.is-awake .core__heart { animation-name: heartbeat; }
 @media (max-width: 720px) {
   .panel.panel--agents { transform: none; }
 }
+
+/* =========================================================
+   Copyright al pie (lo coloca el puntero amarillo)
+   ========================================================= */
+.copyright {
+  position: fixed;
+  z-index: 3;
+  left: 50%;
+  bottom: 24px;
+  margin: 0;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.copyright--agent {
+  clip-path: inset(-4px calc((1 - var(--cp, 1)) * 100%) -4px -4px);
+}
+.agent--keeper {
+  z-index: 7;
+}
+.agent--keeper svg {
+  width: 19px;
+  height: 21px;
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 6px var(--c)) drop-shadow(0 0 12px rgba(255, 216, 74, 0.45));
+}
+.agent--keeper .agent__tag {
+  left: 16px;
+  top: 19px;
+}
+@media (max-width: 720px) {
+  .copyright { bottom: 56px; font-size: 0.52rem; }
+  .copyright__rest { display: none; }
+  body.has-panel .copyright { opacity: 0; }
+}
