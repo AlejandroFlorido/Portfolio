@@ -1,7 +1,8 @@
 // Un único puntero amarillo, el "sano": se mueve tranquilo y en línea recta,
 // sin temblar, esquiva a los punteros rojos y se encarga de poner el aviso de
 // copyright al pie de la página. Después orbita el núcleo junto a los demás
-// mientras está apagado; con el núcleo activo descansa al lado del copyright.
+// mientras está apagado; con el núcleo activo hace la ronda por los nodos,
+// dando una vuelta alrededor de cada uno para "controlar" que esté todo bien.
 
 import { sfx } from "./sound";
 import { makeAgent, render, click, show, type Pt } from "./agent-kit";
@@ -11,6 +12,10 @@ interface KeeperOptions {
   core: HTMLElement;
   /** true mientras el núcleo está apagado (los punteros orbitan). */
   asleep: () => boolean;
+  /** Nodos que revisa con el núcleo activo. */
+  nodes: HTMLElement[];
+  /** true cuando el núcleo está activo y la interfaz ya terminó de armarse. */
+  patrolling: () => boolean;
   /** Posiciones actuales de los punteros rojos (para esquivarlos). */
   threats: () => Pt[];
   delay?: number;
@@ -31,6 +36,12 @@ export function createKeeper(o: KeeperOptions) {
   let prev: Pt[] = [];
   let angle = Math.PI / 2; // arranca desde abajo, que es por donde viene
   let calm = 1; // baja a 0 mientras esquiva: la órbita se frena
+  // Ronda de control por los nodos
+  let visit = 0;
+  let inspecting = false;
+  let inspect = 0; // avance de la vuelta alrededor del nodo (0 a 1)
+  let spin = 0;
+  let pause = 0; // segundos que espera antes de ir al siguiente
 
   o.footer.classList.add("copyright--agent");
   const setReveal = (v: number) => o.footer.style.setProperty("--cp", String(Math.max(0, Math.min(1, v))));
@@ -64,10 +75,61 @@ export function createKeeper(o: KeeperOptions) {
     };
   };
 
+  const dotOf = (i: number) => o.nodes[i].querySelector<HTMLElement>(".node__dot") ?? o.nodes[i];
+  const nodeSpot = (i: number): Pt => {
+    const r = dotOf(i).getBoundingClientRect();
+    const rad = r.width / 2 + 9;
+    const ang = -Math.PI * 0.75 + spin;
+    return { x: r.left + r.width / 2 + Math.cos(ang) * rad, y: r.top + r.height / 2 + Math.sin(ang) * rad };
+  };
+
   function target(time: number): Pt {
     if (phase === "approach") return lineAt(0);
     if (phase === "write") return lineAt(u);
-    return o.asleep() ? orbitSpot(time) : restSpot(time);
+    if (o.asleep()) return orbitSpot(time);
+    if (o.patrolling()) return nodeSpot(visit);
+    return restSpot(time);
+  }
+
+  function checked(i: number) {
+    const n = o.nodes[i];
+    n.classList.remove("is-checked");
+    void n.offsetWidth;
+    n.classList.add("is-checked");
+    window.setTimeout(() => n.classList.remove("is-checked"), 900);
+  }
+
+  // Ronda: llega al nodo, le da una vuelta, lo marca como revisado y sigue
+  function patrol(dt: number, dist: number, danger: number) {
+    if (pause > 0) {
+      pause -= dt;
+      if (pause <= 0) {
+        visit = (visit + 1) % o.nodes.length;
+        spin = 0;
+        a.el.classList.remove("is-tagged");
+      }
+      return;
+    }
+    if (!inspecting) {
+      if (dist < 8) {
+        inspecting = true;
+        inspect = 0;
+        a.tag.textContent = "CONTROL";
+        a.el.classList.add("is-tagged");
+      }
+      return;
+    }
+    if (danger > 0) return; // si viene un rojo, primero se cuida
+    inspect = Math.min(1, inspect + dt / 1.6);
+    spin = inspect * Math.PI * 2;
+    if (inspect >= 1) {
+      inspecting = false;
+      click(a);
+      sfx.hover();
+      checked(visit);
+      a.tag.textContent = "OK ✓";
+      pause = 0.7;
+    }
   }
 
   let last = performance.now();
@@ -77,13 +139,20 @@ export function createKeeper(o: KeeperOptions) {
     const time = now / 1000;
     if (phase !== "off") {
       if (phase === "rest" && o.asleep()) angle += dt * 0.42 * calm;
+      // Fuera de la ronda: reinicia el estado para la próxima
+      if (phase !== "rest" || !o.patrolling()) {
+        if (inspecting || pause > 0) a.el.classList.remove("is-tagged");
+        inspecting = false;
+        pause = 0;
+        spin = 0;
+      }
       const goal = target(time);
       const dx = goal.x - a.pos.x;
       const dy = goal.y - a.pos.y;
       const dist = Math.hypot(dx, dy);
 
       // Velocidad deseada: directo al objetivo, frenando suave al llegar
-      const want = Math.min(MAX_SPEED, phase === "write" ? WRITE_SPEED * 1.2 + dist * 4 : dist * 4);
+      const want = Math.min(MAX_SPEED, phase === "write" || inspecting ? WRITE_SPEED * 1.2 + dist * 6 : dist * 4);
       let vx = dist > 0.01 ? (dx / dist) * want : 0;
       let vy = dist > 0.01 ? (dy / dist) * want : 0;
 
@@ -134,6 +203,7 @@ export function createKeeper(o: KeeperOptions) {
       };
       render(a);
 
+      if (phase === "rest" && o.patrolling()) patrol(dt, dist, danger);
       if (phase === "approach" && dist < 6) {
         click(a);
         sfx.grab();
