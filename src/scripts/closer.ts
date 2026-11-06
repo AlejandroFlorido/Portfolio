@@ -69,7 +69,8 @@ export function createCloser(o: CloserOptions) {
     o.button.style.setProperty(`--${part}`, String(Math.max(0, Math.min(1, v))));
   }
 
-  const R = createRunner();
+  // Los rojos son los que "destruyen": extremadamente erráticos
+  const R = createRunner(3.2);
   const { tween, go, trace } = R;
 
   const dotCenter = () => spot();

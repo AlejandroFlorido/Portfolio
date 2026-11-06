@@ -10,6 +10,9 @@
 import { sfx } from "./sound";
 import { SPEED, newWobble, erratic, randomEase } from "./agent-kit";
 
+// Qué tan nerviosos son los punteros cian (1 = normal)
+const CHAOS = 1.4;
+
 export interface Pt {
   x: number;
   y: number;
@@ -150,13 +153,13 @@ export function createCrew(o: CrewOptions) {
     for (const a of all) {
       // Cada tanto el puntero da un salto corto al azar y acelera de golpe
       if (time > a.nextJump) {
-        a.nextJump = time + 0.25 + Math.random() * 1.1;
-        a.tx = (Math.random() - 0.5) * 28;
-        a.ty = (Math.random() - 0.5) * 22;
-        if (Math.random() < 0.35) a.surge = 1;
+        a.nextJump = time + 0.15 + Math.random() * 0.8;
+        a.tx = (Math.random() - 0.5) * 38;
+        a.ty = (Math.random() - 0.5) * 30;
+        if (Math.random() < 0.45) a.surge = 1;
       }
-      a.jx += (a.tx - a.jx) * Math.min(1, dt * 9);
-      a.jy += (a.ty - a.jy) * Math.min(1, dt * 9);
+      a.jx += (a.tx - a.jx) * Math.min(1, dt * 12);
+      a.jy += (a.ty - a.jy) * Math.min(1, dt * 12);
       a.surge = Math.max(0, a.surge - dt * 2.5);
       const wobble = 1 + 0.6 * Math.sin(time * 2.3 + a.phase) + a.surge * 2.2;
       a.angle += a.speed * dt * wobble;
@@ -188,11 +191,11 @@ export function createCrew(o: CrewOptions) {
   }
   const wait = (ms: number, g: number) => tween(ms, () => {}, g);
 
-  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = randomEase()) {
+  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = randomEase(CHAOS)) {
     const from = { ...a.pos };
-    const w = newWobble();
+    const w = newWobble(CHAOS);
     return tween(
-      dur * (0.8 + Math.random() * 0.35),
+      dur * (0.75 + Math.random() * 0.4),
       (t) => {
         const e = ease(t);
         a.pos = erratic(from, to(), e, w);
