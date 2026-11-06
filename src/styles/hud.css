@@ -645,8 +645,11 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   100% { opacity: 0; }
 }
 
+/* Versión liviana con "reducir movimiento" (iOS, Windows, macOS): el fondo queda
+   quieto y no giran anillos ni ondas, pero los punteros igual arman la interfaz. */
 @media (prefers-reduced-motion: reduce) {
-  .agent, .sel { display: none; }
+  .sel.is-flash { animation: sel-flash 0.9s ease-out !important; }
+  .agent.is-click svg { animation: agent-click 0.25s ease-out !important; }
 }
 
 /* =========================================================

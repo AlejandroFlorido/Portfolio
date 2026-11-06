@@ -231,7 +231,7 @@ const base = import.meta.env.BASE_URL;
       nodes: nodeButtons,
       codes: nodes.map((n) => n.code),
       target: (i) => targets[i],
-      reduceMotion,
+      reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
       segment: (i) => segs[i],
       link(i, p) {
         const line = links[i];
@@ -253,7 +253,7 @@ const base = import.meta.env.BASE_URL;
       panel,
       button: document.querySelector<HTMLElement>("[data-panel-close]")!,
       link: document.querySelector<HTMLElement>("[data-closer-link]")!,
-      reduceMotion,
+      reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
     });
 
     // ---------- Punteros azules que arman la pantalla de cada sección ----------
@@ -262,7 +262,7 @@ const base = import.meta.env.BASE_URL;
       code: panelCode,
       title: panelTitle,
       body: panelBody,
-      reduceMotion,
+      reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
     });
     panelCrew.reset();
 
