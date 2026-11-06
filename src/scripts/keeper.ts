@@ -1,12 +1,16 @@
 // Un único puntero amarillo, el "sano": se mueve tranquilo y en línea recta,
 // sin temblar, esquiva a los punteros rojos y se encarga de poner el aviso de
-// copyright al pie de la página. Después se queda descansando al lado.
+// copyright al pie de la página. Después orbita el núcleo junto a los demás
+// mientras está apagado; con el núcleo activo descansa al lado del copyright.
 
 import { sfx } from "./sound";
 import { makeAgent, render, click, show, type Pt } from "./agent-kit";
 
 interface KeeperOptions {
   footer: HTMLElement;
+  core: HTMLElement;
+  /** true mientras el núcleo está apagado (los punteros orbitan). */
+  asleep: () => boolean;
   /** Posiciones actuales de los punteros rojos (para esquivarlos). */
   threats: () => Pt[];
   delay?: number;
@@ -25,6 +29,8 @@ export function createKeeper(o: KeeperOptions) {
   let shown = 0;
   let lastTick = -1;
   let prev: Pt[] = [];
+  let angle = Math.PI / 2; // arranca desde abajo, que es por donde viene
+  let calm = 1; // baja a 0 mientras esquiva: la órbita se frena
 
   o.footer.classList.add("copyright--agent");
   const setReveal = (v: number) => o.footer.style.setProperty("--cp", String(Math.max(0, Math.min(1, v))));
@@ -48,10 +54,20 @@ export function createKeeper(o: KeeperOptions) {
     };
   };
 
+  // Órbita pareja alrededor del núcleo, entre los cian y los rojos
+  const orbitSpot = (time: number): Pt => {
+    const r = o.core.getBoundingClientRect();
+    const rad = r.width / 2 + 52;
+    return {
+      x: r.left + r.width / 2 + Math.cos(angle) * rad * 1.14,
+      y: r.top + r.height / 2 + Math.sin(angle) * rad * 0.92 + Math.sin(time * 0.9) * 2,
+    };
+  };
+
   function target(time: number): Pt {
     if (phase === "approach") return lineAt(0);
     if (phase === "write") return lineAt(u);
-    return restSpot(time);
+    return o.asleep() ? orbitSpot(time) : restSpot(time);
   }
 
   let last = performance.now();
@@ -60,6 +76,7 @@ export function createKeeper(o: KeeperOptions) {
     last = now;
     const time = now / 1000;
     if (phase !== "off") {
+      if (phase === "rest" && o.asleep()) angle += dt * 0.42 * calm;
       const goal = target(time);
       const dx = goal.x - a.pos.x;
       const dy = goal.y - a.pos.y;
@@ -90,6 +107,7 @@ export function createKeeper(o: KeeperOptions) {
           vy += (ey / d) * FLEE_SPEED * k * 1.6;
         }
       }
+      calm += ((danger > 0 ? 0 : 1) - calm) * Math.min(1, dt * 3);
       const cap = danger > 0 ? FLEE_SPEED : MAX_SPEED;
       const sp = Math.hypot(vx, vy);
       if (sp > cap) {

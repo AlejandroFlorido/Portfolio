@@ -277,6 +277,8 @@ const base = import.meta.env.BASE_URL;
     // ---------- Puntero amarillo: pone el copyright al pie, esquivando a los rojos ----------
     createKeeper({
       footer: document.querySelector<HTMLElement>("[data-copyright]")!,
+      core,
+      asleep: () => !body.classList.contains("is-awake") && !body.classList.contains("is-booting"),
       threats: () => closer.threats(),
     });
 
