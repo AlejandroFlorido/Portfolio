@@ -23,7 +23,7 @@ export const easeOutBack = (t: number) => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * M
 // ---------- Movimiento errático compartido por todos los punteros ----------
 
 /** Factor global de duración: menos de 1 = punteros más rápidos. */
-export const SPEED = 0.6;
+export const SPEED = 0.8;
 
 export interface Wobble {
   bend: number;
