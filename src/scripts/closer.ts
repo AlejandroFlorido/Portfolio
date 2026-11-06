@@ -280,6 +280,11 @@ export function createCloser(o: CloserOptions) {
   }
 
   return {
+    /** Dónde están los rojos visibles (el amarillo los esquiva). */
+    threats(): Pt[] {
+      return [mover, smith].filter((a) => a.el.classList.contains("is-on")).map((a) => a.pos);
+    },
+
     /** Arma el nodo rojo (al abrir una sección). */
     async build() {
       const g = R.next();
