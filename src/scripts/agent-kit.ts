@@ -17,6 +17,57 @@ const ARROW = `<svg viewBox="0 0 16 18" aria-hidden="true"><path d="M1.5 1.5 4 1
 export const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 export const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+/** Arranca rápido, se pasa un poco del objetivo y vuelve (movimiento nervioso). */
+export const easeOutBack = (t: number) => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2);
+
+// ---------- Movimiento errático compartido por todos los punteros ----------
+
+/** Factor global de duración: menos de 1 = punteros más rápidos. */
+export const SPEED = 0.68;
+
+export interface Wobble {
+  bend: number;
+  f1: number;
+  f2: number;
+  p1: number;
+  p2: number;
+  amp: number;
+}
+
+/** Parámetros al azar para un trayecto: curva, temblor y frecuencia propios. */
+export function newWobble(): Wobble {
+  return {
+    bend: (Math.random() - 0.5) * 0.9,
+    f1: 1.5 + Math.random() * 2.5,
+    f2: 4 + Math.random() * 5,
+    p1: Math.random() * Math.PI * 2,
+    p2: Math.random() * Math.PI * 2,
+    amp: 3 + Math.random() * 6,
+  };
+}
+
+/**
+ * Punto del trayecto (e de 0 a 1) entre from y to: en vez de ir en línea recta
+ * hace una curva al azar y tiembla un poco, quieto en los extremos.
+ */
+export function erratic(from: Pt, to: Pt, e: number, w: Wobble): Pt {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = -dy / d;
+  const ny = dx / d;
+  const env = Math.sin(Math.PI * Math.min(1, Math.max(0, e)));
+  const arc = env * w.bend * Math.min(d, 260);
+  const side = env * w.amp * (Math.sin(e * w.f1 * 6.283 + w.p1) * 0.6 + Math.sin(e * w.f2 * 6.283 + w.p2) * 0.4);
+  const along = env * w.amp * 0.5 * Math.sin(e * (w.f1 + w.f2) * 3.14 + w.p2);
+  return {
+    x: from.x + dx * e + nx * (arc + side) + (dx / d) * along,
+    y: from.y + dy * e + ny * (arc + side) + (dy / d) * along,
+  };
+}
+
+/** Curva de aceleración al azar para cada trayecto. */
+export const randomEase = () => (Math.random() < 0.4 ? easeOutBack : easeInOut);
 
 /** Crea un puntero fijo en pantalla (por encima del panel). */
 export function makeAgent(color: string, extraClass: string): Agent {
@@ -62,7 +113,7 @@ export function createRunner() {
       const t0 = performance.now();
       const step = (now: number) => {
         if (g !== gen) return resolve(false);
-        const t = dur <= 0 ? 1 : Math.min((now - t0) / dur, 1);
+        const t = dur <= 0 ? 1 : Math.min((now - t0) / (dur * SPEED), 1);
         fn(t);
         if (t < 1) requestAnimationFrame(step);
         else resolve(true);
@@ -71,14 +122,14 @@ export function createRunner() {
     });
   }
 
-  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = easeInOut) {
+  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = randomEase()) {
     const from = { ...a.pos };
+    const w = newWobble();
     return tween(
-      dur,
+      dur * (0.8 + Math.random() * 0.35),
       (t) => {
         const e = ease(t);
-        const p = to();
-        a.pos = { x: lerp(from.x, p.x, e), y: lerp(from.y, p.y, e) };
+        a.pos = erratic(from, to(), e, w);
         render(a);
         onT?.(e);
       },

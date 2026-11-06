@@ -8,6 +8,7 @@
 // Al apagar el núcleo hacen todo al revés, se llevan los nodos y vuelven a orbitar.
 
 import { sfx } from "./sound";
+import { SPEED, newWobble, erratic, randomEase } from "./agent-kit";
 
 export interface Pt {
   x: number;
@@ -65,6 +66,13 @@ interface Agent {
   speed: number;
   ring: number;
   phase: number;
+  // Temblor en órbita: desvío actual, desvío buscado y cuándo cambia
+  jx: number;
+  jy: number;
+  tx: number;
+  ty: number;
+  nextJump: number;
+  surge: number;
 }
 
 interface Team {
@@ -95,9 +103,15 @@ export function createCrew(o: CrewOptions) {
       pos: center(),
       mode: o.reduceMotion ? "hidden" : "orbit",
       angle: (i / o.nodes.length) * Math.PI * 2 + r * 0.45,
-      speed: (0.3 + r * 0.07) * (r % 2 ? -1 : 1),
+      speed: (0.45 + r * 0.1 + Math.random() * 0.2) * (r % 2 ? -1 : 1),
       ring: r,
       phase: i * 1.7 + r,
+      jx: 0,
+      jy: 0,
+      tx: 0,
+      ty: 0,
+      nextJump: 0,
+      surge: 0,
     };
     all.push(a);
     return a;
@@ -119,8 +133,8 @@ export function createCrew(o: CrewOptions) {
     const c = center();
     const r = coreR() + 18 + a.ring * 13;
     return {
-      x: c.x + Math.cos(a.angle) * r * 1.12,
-      y: c.y + Math.sin(a.angle) * r * 0.9 + Math.sin(time * 1.6 + a.phase) * 4,
+      x: c.x + Math.cos(a.angle) * r * 1.12 + a.jx,
+      y: c.y + Math.sin(a.angle) * r * 0.9 + Math.sin(time * 1.6 + a.phase) * 4 + a.jy,
     };
   }
 
@@ -132,8 +146,20 @@ export function createCrew(o: CrewOptions) {
   function loop(now: number) {
     const dt = Math.min((now - lastT) / 1000, 0.05);
     lastT = now;
+    const time = now / 1000;
     for (const a of all) {
-      a.angle += a.speed * dt;
+      // Cada tanto el puntero da un salto corto al azar y acelera de golpe
+      if (time > a.nextJump) {
+        a.nextJump = time + 0.25 + Math.random() * 1.1;
+        a.tx = (Math.random() - 0.5) * 28;
+        a.ty = (Math.random() - 0.5) * 22;
+        if (Math.random() < 0.35) a.surge = 1;
+      }
+      a.jx += (a.tx - a.jx) * Math.min(1, dt * 9);
+      a.jy += (a.ty - a.jy) * Math.min(1, dt * 9);
+      a.surge = Math.max(0, a.surge - dt * 2.5);
+      const wobble = 1 + 0.6 * Math.sin(time * 2.3 + a.phase) + a.surge * 2.2;
+      a.angle += a.speed * dt * wobble;
       if (a.mode === "orbit") {
         a.pos = orbitPoint(a, now / 1000);
         render(a);
@@ -152,7 +178,7 @@ export function createCrew(o: CrewOptions) {
       const t0 = performance.now();
       const step = (now: number) => {
         if (g !== gen) return resolve(false);
-        const t = Math.min((now - t0) / dur, 1);
+        const t = Math.min((now - t0) / (dur * SPEED), 1);
         fn(t);
         if (t < 1) requestAnimationFrame(step);
         else resolve(true);
@@ -162,14 +188,14 @@ export function createCrew(o: CrewOptions) {
   }
   const wait = (ms: number, g: number) => tween(ms, () => {}, g);
 
-  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = easeInOut) {
+  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = randomEase()) {
     const from = { ...a.pos };
+    const w = newWobble();
     return tween(
-      dur,
+      dur * (0.8 + Math.random() * 0.35),
       (t) => {
         const e = ease(t);
-        const p = to();
-        a.pos = { x: lerp(from.x, p.x, e), y: lerp(from.y, p.y, e) };
+        a.pos = erratic(from, to(), e, w);
         render(a);
         onT?.(e);
       },
