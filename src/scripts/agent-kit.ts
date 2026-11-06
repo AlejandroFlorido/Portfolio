@@ -23,7 +23,7 @@ export const easeOutBack = (t: number) => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * M
 // ---------- Movimiento errático compartido por todos los punteros ----------
 
 /** Factor global de duración: menos de 1 = punteros más rápidos. */
-export const SPEED = 0.68;
+export const SPEED = 0.6;
 
 export interface Wobble {
   bend: number;
@@ -34,16 +34,27 @@ export interface Wobble {
   amp: number;
 }
 
-/** Parámetros al azar para un trayecto: curva, temblor y frecuencia propios. */
-export function newWobble(): Wobble {
+/**
+ * Parámetros al azar para un trayecto: curva, temblor y frecuencia propios.
+ * `chaos` escala qué tan nervioso es (1 = normal, 3 = desquiciado).
+ */
+export function newWobble(chaos = 1): Wobble {
+  const k = Math.sqrt(chaos);
   return {
-    bend: (Math.random() - 0.5) * 0.9,
-    f1: 1.5 + Math.random() * 2.5,
-    f2: 4 + Math.random() * 5,
+    bend: (Math.random() - 0.5) * 1.2 * chaos,
+    f1: (2 + Math.random() * 3) * k,
+    f2: (5 + Math.random() * 6) * k,
     p1: Math.random() * Math.PI * 2,
     p2: Math.random() * Math.PI * 2,
-    amp: 3 + Math.random() * 6,
+    amp: (5 + Math.random() * 7) * chaos,
   };
+}
+
+/** Sacudida al azar (en px) que se suma al recorrido; 0 en los extremos. */
+export function shake(chaos: number, t: number): Pt {
+  if (chaos <= 1 || t >= 1) return { x: 0, y: 0 };
+  const s = (chaos - 1) * 3.2 * Math.sin(Math.PI * t);
+  return { x: (Math.random() - 0.5) * s, y: (Math.random() - 0.5) * s };
 }
 
 /**
@@ -67,7 +78,7 @@ export function erratic(from: Pt, to: Pt, e: number, w: Wobble): Pt {
 }
 
 /** Curva de aceleración al azar para cada trayecto. */
-export const randomEase = () => (Math.random() < 0.4 ? easeOutBack : easeInOut);
+export const randomEase = (chaos = 1) => (Math.random() < 0.4 + (chaos - 1) * 0.2 ? easeOutBack : easeInOut);
 
 /** Crea un puntero fijo en pantalla (por encima del panel). */
 export function makeAgent(color: string, extraClass: string): Agent {
@@ -105,7 +116,7 @@ export function hide(a: Agent) {
  * Animaciones cancelables: cada `next()` invalida las animaciones anteriores
  * (sus promesas resuelven `false`).
  */
-export function createRunner() {
+export function createRunner(chaos = 1) {
   let gen = 0;
 
   function tween(dur: number, fn: (t: number) => void, g: number) {
@@ -122,14 +133,16 @@ export function createRunner() {
     });
   }
 
-  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = randomEase()) {
+  function go(a: Agent, to: () => Pt, dur: number, g: number, onT?: (e: number) => void, ease = randomEase(chaos)) {
     const from = { ...a.pos };
-    const w = newWobble();
+    const w = newWobble(chaos);
     return tween(
-      dur * (0.8 + Math.random() * 0.35),
+      dur * (0.75 + Math.random() * 0.4),
       (t) => {
         const e = ease(t);
-        a.pos = erratic(from, to(), e, w);
+        const p = erratic(from, to(), e, w);
+        const j = shake(chaos, t);
+        a.pos = { x: p.x + j.x, y: p.y + j.y };
         render(a);
         onT?.(e);
       },
@@ -142,7 +155,9 @@ export function createRunner() {
       dur,
       (t) => {
         const e = ease(t);
-        a.pos = path(e);
+        const p = path(e);
+        const j = shake(chaos, t);
+        a.pos = { x: p.x + j.x, y: p.y + j.y };
         render(a);
         work(e);
       },

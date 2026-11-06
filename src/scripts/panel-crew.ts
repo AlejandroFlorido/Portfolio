@@ -16,7 +16,7 @@ interface PanelCrewOptions {
 }
 
 export function createPanelCrew(o: PanelCrewOptions) {
-  const R = createRunner();
+  const R = createRunner(1.4);
   const { go, trace, chase, tween } = R;
 
   const framer = makeAgent("#50dcff", "agent--panel");
