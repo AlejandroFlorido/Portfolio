@@ -29,6 +29,7 @@ const base = import.meta.env.BASE_URL;
   </p>
 
   <main class="stage">
+    <canvas class="world" aria-hidden="true" data-world></canvas>
     <svg class="links" aria-hidden="true">
       {nodes.map((node) => <line data-link={node.id} />)}
       {nodes.map((node) => <circle class="packet" r="2.5" data-packet={node.id} />)}
@@ -109,6 +110,7 @@ const base = import.meta.env.BASE_URL;
     import { createCloser } from "../scripts/closer";
     import { createKeeper } from "../scripts/keeper";
     import { createPanelCrew } from "../scripts/panel-crew";
+    import { createWorld, hasWebGL } from "../scripts/world3d";
 
     const topo = startTopo(document.getElementById("topo") as HTMLCanvasElement);
     const body = document.body;
@@ -125,7 +127,20 @@ const base = import.meta.env.BASE_URL;
     const links = [...document.querySelectorAll<SVGLineElement>("[data-link]")];
     const packets = [...document.querySelectorAll<SVGCircleElement>("[data-packet]")];
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const ONLINE = `en línea · ${nodes.length} nodos`;
+    // ---------- Escena 3D ----------
+    const world = hasWebGL()
+      ? createWorld({
+          canvas: document.querySelector<HTMLCanvasElement>("[data-world]")!,
+          nodes: [...document.querySelectorAll<HTMLElement>("[data-node]")],
+          canNavigate: () =>
+            body.classList.contains("is-awake") &&
+            !body.classList.contains("is-building") &&
+            !body.classList.contains("has-panel"),
+          awake: () => body.classList.contains("is-awake"),
+        })
+      : null;
+    if (world) body.classList.add("has-3d");
+    const ONLINE = world ? `en línea · ${nodes.length} nodos · arrastrá para navegar` : `en línea · ${nodes.length} nodos`;
 
     // ---------- Reloj ----------
     const tick = () => (clock.textContent = new Date().toLocaleTimeString("es-AR", { hour12: false }));
@@ -204,8 +219,50 @@ const base = import.meta.env.BASE_URL;
         if (!links[i].classList.contains("is-dragging")) drawLine(i, seg);
       });
     }
-    layout();
-    addEventListener("resize", layout);
+    // Con escena 3D, núcleo, nodos y conexiones siguen a la proyección de las esferas
+    function follow3d() {
+      if (!world) return;
+      const c = world.projectCore();
+      const cs = core.style;
+      cs.setProperty("--cx", `${c.x}px`);
+      cs.setProperty("--cy", `${c.y}px`);
+      cs.setProperty("--cs", c.scale.toFixed(3));
+      cs.zIndex = String(Math.round(1000 - c.depth * 10));
+      const coreR = (core.offsetWidth / 2) * c.scale * 0.62;
+      nodeButtons.forEach((btn, i) => {
+        const p = world.projectNode(i);
+        const st = btn.style;
+        const ns = Math.max(0.45, Math.min(2.2, p.scale));
+        // El botón se corre para que su punto (no su centro) quede sobre la esfera
+        const by = p.y + world.dotOffset(btn) * ns;
+        st.setProperty("--x", `${p.x}px`);
+        st.setProperty("--y", `${by}px`);
+        st.setProperty("--ns", ns.toFixed(3));
+        st.zIndex = String(Math.round(1000 - p.depth * 10));
+        btn.classList.toggle("is-behind", p.behind);
+        btn.classList.toggle("is-far", !p.behind && p.depth > c.depth + 1.5);
+        targets[i] = { x: p.x, y: by };
+        // Conexión: del borde del núcleo al borde de la esfera del nodo
+        const dx = p.x - c.x;
+        const dy = p.y - c.y;
+        const d = Math.hypot(dx, dy) || 1;
+        const nodeR = world.nodeRadius() * p.scale + 4;
+        const cx = innerWidth / 2 + c.x;
+        const cy = innerHeight / 2 + c.y;
+        const seg =
+          d > coreR + nodeR + 6
+            ? { x1: cx + (dx / d) * coreR, y1: cy + (dy / d) * coreR, x2: cx + dx - (dx / d) * nodeR, y2: cy + dy - (dy / d) * nodeR }
+            : { x1: cx, y1: cy, x2: cx, y2: cy };
+        segs[i] = seg;
+        if (!links[i].classList.contains("is-dragging")) drawLine(i, seg);
+      });
+      requestAnimationFrame(follow3d);
+    }
+    if (world) requestAnimationFrame(follow3d);
+    else {
+      layout();
+      addEventListener("resize", layout);
+    }
 
     // ---------- Paquetes de datos que viajan por las conexiones ----------
     const packetState = packets.map((_, i) => ({ t: Math.random(), speed: 0.25 + Math.random() * 0.25, burst: 0, i }));
@@ -260,6 +317,7 @@ const base = import.meta.env.BASE_URL;
       codes: nodes.map((n) => n.code),
       target: (i) => targets[i],
       reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
+      orbit3d: world ? world.orbit : undefined,
       segment: (i) => segs[i],
       link(i, p) {
         const line = links[i];
@@ -283,6 +341,7 @@ const base = import.meta.env.BASE_URL;
       link: document.querySelector<HTMLElement>("[data-closer-link]")!,
       core,
       prey: crew,
+      orbit3d: world ? world.orbit : undefined,
       avoid: () => keeper.position(),
       reduceMotion: false, // los punteros se muestran siempre (ver versión liviana en hud.css)
     });
@@ -313,6 +372,7 @@ const base = import.meta.env.BASE_URL;
 
     async function wake() {
       closer.leave();
+      world?.flare();
       body.classList.add("is-building");
       body.classList.add("is-booting");
       core.setAttribute("aria-expanded", "true");
@@ -343,6 +403,8 @@ const base = import.meta.env.BASE_URL;
       topo.setIntensity(0.35);
       body.classList.add("is-building");
       setStatus("desarmando interfaz…");
+      // La cámara vuelve a la vista inicial antes de desarmar
+      if (world) await world.home();
       await crew.unbuild();
       body.classList.remove("is-building");
       setStatus("en reposo");
@@ -351,7 +413,21 @@ const base = import.meta.env.BASE_URL;
 
     let openTimer = 0;
     let openTurn = 0;
-    function openPanel(id: string) {
+    // Con escena 3D, la cámara primero vuela hasta el nodo y después se abre
+    let flying = false;
+    async function openPanel(id: string) {
+      const index = nodes.findIndex((n) => n.id === id);
+      if (world && index >= 0 && !body.classList.contains("has-panel") && !closing) {
+        if (flying) return;
+        flying = true;
+        sfx.hover();
+        await world.focus(index);
+        flying = false;
+      }
+      openPanelNow(id);
+    }
+
+    function openPanelNow(id: string) {
       const index = nodes.findIndex((n) => n.id === id);
       const node = nodes[index];
       const tpl = document.querySelector<HTMLTemplateElement>(`template[data-content="${id}"]`);
@@ -407,6 +483,8 @@ const base = import.meta.env.BASE_URL;
       // al final el marco se pliega y recién ahí se cierra la sección
       await Promise.all([closer.unbuild(), panelCrew.clear()]);
       await panelCrew.collapse();
+      // La cámara se aleja otra vez a la vista general
+      world?.home();
       closing = false;
       body.classList.remove("has-panel");
       nodeButtons.forEach((b) => b.classList.remove("is-active"));

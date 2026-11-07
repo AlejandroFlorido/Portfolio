@@ -630,8 +630,10 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   transition: opacity 0.35s ease;
   will-change: transform;
 }
-.agent.is-on { opacity: 1; }
+.agent.is-on { opacity: var(--fade, 1); }
 .agent svg {
+  /* En 3D se achica o agranda según la profundidad */
+  scale: var(--k, 1);
   position: absolute;
   left: -1px;
   top: -1px;
@@ -927,3 +929,38 @@ body.is-awake .core__heart { animation-name: heartbeat; }
 .globe--core i:nth-child(7) { transform: rotateX(90deg); border-color: rgba(166, 244, 255, 0.7); }
 body.is-awake .globe--core { opacity: 0.85; }
 body.is-awake .globe--core .globe__spin { animation-duration: 7s; }
+
+/* =========================================================
+   Escena 3D (Three.js): las esferas se dibujan en el canvas y el HTML
+   (textos, líneas, punteros) acompaña su proyección
+   ========================================================= */
+.world {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+body.has-3d .stage { touch-action: none; }
+body.has-3d.is-awake:not(.is-building):not(.has-panel) .stage { cursor: grab; }
+body.has-3d.is-dragging-world .stage { cursor: grabbing; }
+/* El núcleo HTML sigue a la esfera: queda solo el HUD de anillos */
+body.has-3d .core {
+  transform: translate(-50%, -50%) translate(var(--cx, 0px), var(--cy, 0px)) scale(var(--cs, 1));
+}
+body.has-3d .core__heart,
+body.has-3d .core__glow,
+body.has-3d .globe { display: none; }
+/* Nodos: la esfera la dibuja WebGL; el HTML deja el área de clic, el anillo y los textos */
+body.has-3d .node.is-placed {
+  transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + var(--y, 0px))) scale(var(--ns, 1));
+  transition: opacity 0.6s ease;
+}
+body.has-3d .node__dot {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+body.has-3d .node__dot::before { display: none; }
+body.has-3d .node.is-far { opacity: 0.55; }
+body.has-3d .node.is-behind { opacity: 0; pointer-events: none; }
