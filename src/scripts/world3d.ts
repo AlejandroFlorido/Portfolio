@@ -99,7 +99,13 @@ export function createWorld(o: WorldOptions) {
   coreGroup.add(coreOrbit);
 
   // ---------- Nodos ----------
-  const nodeWorld = POSITIONS.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+  const nodeBase = POSITIONS.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+  // Posición actual de cada nodo: con el núcleo activo la constelación gira despacio
+  const nodeWorld = nodeBase.map((v) => v.clone());
+  const DRIFT_AXIS = new THREE.Vector3(0.18, 1, -0.1).normalize();
+  const driftQ = new THREE.Quaternion();
+  let drift = 0;
+  let driftSpeed = 0;
   const spheres = o.nodes.map((_, i) => {
     const g = new THREE.Group();
     const mesh = new THREE.Mesh(
@@ -402,8 +408,20 @@ export function createWorld(o: WorldOptions) {
       spinVel.y *= Math.exp(-dt * 2.5);
       spinBy(spinVel.x * dt * 60, spinVel.y * dt * 60);
       spinIdle += dt;
-      if (spinIdle > 2.5 || o.awake()) coreGroup.quaternion.slerp(IDENT, 1 - Math.exp(-dt * 0.8));
+      if (o.awake()) spinBy(0, dt * 0.35); // encendido, el núcleo gira solo
+      else if (spinIdle > 2.5) coreGroup.quaternion.slerp(IDENT, 1 - Math.exp(-dt * 0.8));
     }
+
+    // Con el núcleo activo (y sin estar dentro de un nodo) los nodos giran en el espacio
+    // (se frena mientras el mouse está sobre un nodo, para poder tocarlo tranquilo)
+    const hovering = o.nodes.some((n) => n.matches(":hover"));
+    driftSpeed += ((o.canNavigate() && insideNode < 0 && !hovering ? 0.07 : 0) - driftSpeed) * (1 - Math.exp(-dt * 3));
+    drift += dt * driftSpeed;
+    driftQ.setFromAxisAngle(DRIFT_AXIS, drift);
+    nodeBase.forEach((b, i) => {
+      nodeWorld[i].copy(b).applyQuaternion(driftQ);
+      nodeWorld[i].y += Math.sin(t * 0.6 + i * 1.7) * 0.18; // vaivén suave de cada uno
+    });
 
     // Entrar en un nodo: crece hasta envolver la cámara y aparece su interior
     inside += (insideGoal - inside) * (1 - Math.exp(-dt * 2.6));
@@ -468,6 +486,8 @@ export function createWorld(o: WorldOptions) {
       mm.emissiveIntensity = 0.1 + built * (hot ? 0.55 : 0.18);
       mm.emissive.copy(NODE_EMI).lerp(NODE_RED, i === insideNode ? tint : 0);
       s.wire.rotation.y += dt * (hot ? 1.6 : 0.5);
+      s.mesh.rotation.y += dt * 0.4;
+      s.g.rotation.x = Math.sin(t * 0.4 + i) * 0.25;
       s.ring.rotation.z += dt * 0.8;
       const line = beams[i];
       const pts = line.geometry.attributes.position as THREE.BufferAttribute;
