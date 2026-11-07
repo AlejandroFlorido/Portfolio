@@ -5,7 +5,7 @@
 // Al cerrar borran todo al revés el MARCO borra el borde y el nodo se repliega.
 
 import { sfx } from "./sound";
-import { createRunner, makeAgent, click, show, hide, lerp, easeOut, ticker, type Pt } from "./agent-kit";
+import { createRunner, makeAgent, click, show, hide, lerp, ticker, type Pt } from "./agent-kit";
 
 interface PanelCrewOptions {
   panel: HTMLElement;

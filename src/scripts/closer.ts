@@ -19,6 +19,8 @@ interface CloserOptions {
   panel: HTMLElement;
   core: HTMLElement;
   prey: Prey;
+  /** Órbita en 3D alrededor del núcleo (si hay escena 3D). */
+  orbit3d?: (angle: number, ring: number, tilt: number) => { x: number; y: number; scale: number; occluded: boolean };
   /** Posición del puntero amarillo: los rojos lo esquivan siempre. */
   avoid?: () => Pt | null;
   button: HTMLElement;
@@ -155,6 +157,14 @@ export function createCloser(o: CloserOptions) {
   }));
 
   function roamPoint(p: Pest, time: number): Pt {
+    if (roam === "core" && o.orbit3d) {
+      const q = o.orbit3d(p.angle, 5.5 + Math.sin(time * 2.7 + p.angle) * 0.8, p.speed > 0 ? 0.5 : -0.6);
+      p.a.el.style.setProperty("--k", q.scale.toFixed(3));
+      p.a.el.style.setProperty("--fade", q.occluded ? "0.08" : "1");
+      return { x: q.x + p.jx * q.scale, y: q.y + p.jy * q.scale };
+    }
+    p.a.el.style.setProperty("--k", "1");
+    p.a.el.style.setProperty("--fade", "1");
     if (roam === "core") {
       const r = o.core.getBoundingClientRect();
       const rad = r.width / 2 + 70 + Math.sin(time * 2.7 + p.angle) * 26;

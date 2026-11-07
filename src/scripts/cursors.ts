@@ -36,6 +36,8 @@ export interface CrewOptions {
   /** Progreso de la conexión: null = oculta, 0..1 = trazándose, 1 = completa. */
   link: (i: number, progress: number | null) => void;
   reduceMotion: boolean;
+  /** Órbita en 3D alrededor del núcleo (si hay escena 3D): punto de pantalla. */
+  orbit3d?: (angle: number, ring: number, tilt: number) => { x: number; y: number; scale: number; occluded: boolean };
 }
 
 type Role = "mov" | "core" | "ring" | "link" | "txt";
@@ -76,6 +78,9 @@ interface Agent {
   ty: number;
   nextJump: number;
   surge: number;
+  // En 3D: escala por profundidad y si lo tapa el núcleo
+  depth: number;
+  hidden: boolean;
 }
 
 interface Team {
@@ -115,6 +120,8 @@ export function createCrew(o: CrewOptions) {
       ty: 0,
       nextJump: 0,
       surge: 0,
+      depth: 1,
+      hidden: false,
     };
     all.push(a);
     return a;
@@ -133,6 +140,13 @@ export function createCrew(o: CrewOptions) {
 
   // ---------- Órbita ----------
   function orbitPoint(a: Agent, time: number): Pt {
+    if (o.orbit3d) {
+      // En 3D: anillos inclinados; más grande cuanto más cerca, tapado detrás del núcleo
+      const p = o.orbit3d(a.angle, a.ring, Math.sin(a.phase * 1.3) * 0.7);
+      a.depth = p.scale;
+      a.hidden = p.occluded;
+      return { x: p.x + a.jx * 0.6 * p.scale, y: p.y + a.jy * 0.6 * p.scale };
+    }
     const c = center();
     const r = coreR() + 18 + a.ring * 13;
     return {
@@ -143,6 +157,9 @@ export function createCrew(o: CrewOptions) {
 
   function render(a: Agent) {
     a.el.style.transform = `translate3d(${a.pos.x}px, ${a.pos.y}px, 0)`;
+    const orbiting = a.mode === "orbit";
+    a.el.style.setProperty("--k", orbiting ? a.depth.toFixed(3) : "1");
+    a.el.style.setProperty("--fade", orbiting && a.hidden ? "0.08" : "1");
   }
 
   let lastT = performance.now();
