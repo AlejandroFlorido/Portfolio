@@ -990,3 +990,38 @@ body.has-3d.has-panel .panel { transform: perspective(900px) rotateX(0) scale(1)
 /* En reposo el núcleo se puede girar arrastrando */
 body.has-3d:not(.is-awake):not(.is-building) .core { cursor: grab; touch-action: none; }
 body.has-3d.is-dragging-world .core { cursor: grabbing; }
+
+/* ---------- Contenido flotando dentro del nodo (3D) ----------
+   Sin "pantalla": el texto flota en el interior del nodo, se mece despacio y
+   se inclina un poco hacia el mouse */
+body.has-3d .panel {
+  background: radial-gradient(circle at 50% 50%, rgba(3, 16, 26, 0.5), rgba(3, 16, 26, 0.18) 55%, transparent 72%);
+  box-shadow: none;
+  perspective: 900px;
+  overflow: visible;
+  transition: opacity 0.4s ease, transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.7s ease;
+}
+body.has-3d .panel::before {
+  border-color: rgba(80, 220, 255, 0.35);
+  box-shadow: 0 0 30px rgba(80, 220, 255, 0.12), inset 0 0 40px rgba(80, 220, 255, 0.08);
+}
+body.has-3d .panel__orb { display: none; }
+body.has-3d .panel__inner {
+  transform: rotateX(calc(var(--my, 0) * -9deg)) rotateY(calc(var(--mx, 0) * 11deg));
+  transition: transform 0.6s ease-out;
+  animation: float-in-node 7s ease-in-out infinite;
+}
+@keyframes float-in-node {
+  0%, 100% { translate: 0 0 0; }
+  33% { translate: 4px -9px 0; }
+  66% { translate: -5px 5px 0; }
+}
+body.has-3d .panel__title { text-shadow: 0 0 14px rgba(80, 220, 255, 0.55), 0 0 2px rgba(191, 244, 255, 0.6); }
+body.has-3d .panel__body { text-shadow: 0 0 10px rgba(80, 220, 255, 0.25); }
+body.has-3d .panel__head { border-bottom-color: rgba(80, 220, 255, 0.18); }
+/* Cierre: el nodo se pone rojo mientras los rojos borran */
+body.has-3d.is-purging .panel { filter: hue-rotate(160deg) saturate(1.5); }
+.agent--eraser svg { width: 15px; height: 18px; filter: drop-shadow(0 0 6px rgba(255, 77, 94, 0.7)); }
+@media (prefers-reduced-motion: reduce) {
+  body.has-3d .panel__inner { animation: none; }
+}

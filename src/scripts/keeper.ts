@@ -42,6 +42,8 @@ export function createKeeper(o: KeeperOptions) {
   let inspect = 0; // avance de la vuelta alrededor del nodo (0 a 1)
   let spin = 0;
   let pause = 0; // segundos que espera antes de ir al siguiente
+  let urgent = false; // va rápido a revisar un nodo recién cerrado
+  const URGENT_SPEED = 820;
 
   o.footer.classList.add("copyright--agent");
   const setReveal = (v: number) => o.footer.style.setProperty("--cp", String(Math.max(0, Math.min(1, v))));
@@ -114,21 +116,22 @@ export function createKeeper(o: KeeperOptions) {
       if (dist < 8) {
         inspecting = true;
         inspect = 0;
-        a.tag.textContent = "CONTROL";
+        a.tag.textContent = urgent ? "¿CIERRE ABRUPTO?" : "CONTROL";
         a.el.classList.add("is-tagged");
       }
       return;
     }
     if (danger > 0) return; // si viene un rojo, primero se cuida
-    inspect = Math.min(1, inspect + dt / 1.6);
+    inspect = Math.min(1, inspect + dt / (urgent ? 2.2 : 1.6));
     spin = inspect * Math.PI * 2;
     if (inspect >= 1) {
       inspecting = false;
       click(a);
       sfx.hover();
       checked(visit);
-      a.tag.textContent = "OK ✓";
-      pause = 0.7;
+      a.tag.textContent = urgent ? "TODO OK ✓" : "OK ✓";
+      pause = urgent ? 1.4 : 0.7;
+      urgent = false;
     }
   }
 
@@ -141,10 +144,11 @@ export function createKeeper(o: KeeperOptions) {
       if (phase === "rest" && o.asleep()) angle += dt * 0.42 * calm;
       // Fuera de la ronda: reinicia el estado para la próxima
       if (phase !== "rest" || !o.patrolling()) {
-        if (inspecting || pause > 0) a.el.classList.remove("is-tagged");
+        if (inspecting || pause > 0 || urgent) a.el.classList.remove("is-tagged");
         inspecting = false;
         pause = 0;
         spin = 0;
+        urgent = false;
       }
       const goal = target(time);
       const dx = goal.x - a.pos.x;
@@ -152,7 +156,8 @@ export function createKeeper(o: KeeperOptions) {
       const dist = Math.hypot(dx, dy);
 
       // Velocidad deseada: directo al objetivo, frenando suave al llegar
-      const want = Math.min(MAX_SPEED, phase === "write" || inspecting ? WRITE_SPEED * 1.2 + dist * 6 : dist * 4);
+      const top = urgent && !inspecting ? URGENT_SPEED : MAX_SPEED;
+      const want = Math.min(top, phase === "write" || inspecting ? WRITE_SPEED * 1.2 + dist * 6 : dist * (urgent ? 7 : 4));
       let vx = dist > 0.01 ? (dx / dist) * want : 0;
       let vy = dist > 0.01 ? (dy / dist) * want : 0;
 
@@ -177,14 +182,14 @@ export function createKeeper(o: KeeperOptions) {
         }
       }
       calm += ((danger > 0 ? 0 : 1) - calm) * Math.min(1, dt * 3);
-      const cap = danger > 0 ? FLEE_SPEED : MAX_SPEED;
+      const cap = danger > 0 ? FLEE_SPEED : top;
       const sp = Math.hypot(vx, vy);
       if (sp > cap) {
         vx = (vx / sp) * cap;
         vy = (vy / sp) * cap;
       }
       // Suavizado: nada de saltos ni temblores
-      const s = Math.min(1, dt * (danger > 0 ? 22 : 6));
+      const s = Math.min(1, dt * (danger > 0 ? 22 : urgent ? 10 : 6));
       vel.x += (vx - vel.x) * s;
       vel.y += (vy - vel.y) * s;
       // Contra un borde no puede seguir retrocediendo: se desliza de costado
@@ -239,6 +244,17 @@ export function createKeeper(o: KeeperOptions) {
   }, o.delay ?? 1400);
 
   return {
+    /** Va rápido a revisar un nodo que se acaba de cerrar ("¿cierre abrupto?") y da el OK. */
+    checkClosed(i: number) {
+      if (phase !== "rest") return;
+      visit = i;
+      inspecting = false;
+      pause = 0;
+      spin = 0;
+      urgent = true;
+      a.tag.textContent = "¡ALERTA!";
+      a.el.classList.add("is-tagged");
+    },
     /** Dónde está el amarillo (null si todavía no apareció). */
     position(): Pt | null {
       return phase === "off" ? null : a.pos;
