@@ -250,8 +250,10 @@ body.is-awake .hint { visibility: hidden; animation: none; opacity: 0; }
   height: 54px;
   border-radius: 50%;
   border: 1px solid var(--cyan-soft);
-  background: rgba(4, 18, 28, 0.85);
-  box-shadow: 0 0 18px rgba(80, 220, 255, 0.25);
+  /* Sombreado de esfera: luz arriba a la izquierda, sombra abajo a la derecha */
+  background: radial-gradient(circle at 34% 30%, rgba(130, 235, 255, 0.3), rgba(10, 40, 58, 0.92) 48%, rgba(2, 8, 14, 0.96) 78%);
+  box-shadow: 0 0 18px rgba(80, 220, 255, 0.25), inset -6px -8px 14px rgba(0, 0, 0, 0.55);
+  perspective: 220px;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 /* Partes del nodo que arman los punteros (--core, --ring, --txt, --code van de 0 a 1) */
@@ -865,3 +867,63 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   box-shadow: 0 0 0 4px rgba(255, 216, 74, 0.18), 0 0 22px rgba(255, 216, 74, 0.45);
 }
 .panel__list li > span:first-child { flex-shrink: 0; }
+
+/* =========================================================
+   Globos 3D: meridianos que giran dentro de cada nodo y del núcleo
+   ========================================================= */
+.globe {
+  position: absolute;
+  inset: 7%;
+  border-radius: 50%;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  /* Inclinado, y además mira un poco hacia el mouse (--mx/--my de -1 a 1) */
+  transform: rotateX(calc(-18deg - var(--my, 0) * 22deg)) rotateY(calc(var(--mx, 0) * 26deg)) rotateZ(14deg);
+  opacity: var(--core, 1);
+  transition: transform 0.4s ease-out;
+}
+.globe__spin {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: globe-spin 9s linear infinite;
+}
+.globe i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(80, 220, 255, 0.55);
+  box-shadow: 0 0 4px rgba(80, 220, 255, 0.25);
+}
+.globe i:nth-child(1) { transform: rotateY(0deg); }
+.globe i:nth-child(2) { transform: rotateY(45deg); }
+.globe i:nth-child(3) { transform: rotateY(90deg); }
+.globe i:nth-child(4) { transform: rotateY(135deg); }
+/* Ecuador */
+.globe i:nth-child(5) { transform: rotateX(90deg); border-color: rgba(166, 244, 255, 0.75); }
+@keyframes globe-spin { to { transform: rotateY(360deg); } }
+.node:hover .globe__spin,
+.node.is-active .globe__spin { animation-duration: 3s; }
+
+/* Núcleo: un globo más grande dentro de los anillos */
+.core { perspective: 700px; }
+.core svg {
+  transform: rotateX(calc(var(--my, 0) * -14deg)) rotateY(calc(var(--mx, 0) * 16deg));
+  transition: transform 0.4s ease-out;
+}
+.globe--core {
+  inset: 25%;
+  opacity: 0.35;
+  transition: transform 0.4s ease-out, opacity 0.8s ease;
+}
+.globe--core .globe__spin { animation-duration: 18s; }
+.globe--core i { border-color: rgba(80, 220, 255, 0.45); }
+.globe--core i:nth-child(1) { transform: rotateY(0deg); }
+.globe--core i:nth-child(2) { transform: rotateY(30deg); }
+.globe--core i:nth-child(3) { transform: rotateY(60deg); }
+.globe--core i:nth-child(4) { transform: rotateY(90deg); }
+.globe--core i:nth-child(5) { transform: rotateY(120deg); }
+.globe--core i:nth-child(6) { transform: rotateY(150deg); }
+.globe--core i:nth-child(7) { transform: rotateX(90deg); border-color: rgba(166, 244, 255, 0.7); }
+body.is-awake .globe--core { opacity: 0.85; }
+body.is-awake .globe--core .globe__spin { animation-duration: 7s; }
