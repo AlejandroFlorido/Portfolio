@@ -39,14 +39,20 @@ export function createCloser(o: CloserOptions) {
   const smith = makeAgent("#ff8f80", "agent--red");
 
   // Esquina del panel de donde "sale" el nodo, y lugar donde queda
-  function anchor(): Pt {
+  // El nodo ampliado es un círculo: el rojo sale de su borde (arriba a la izquierda)
+  const ANG = (-3 * Math.PI) / 4;
+  function onCircle(extra: number): Pt {
     const r = o.panel.getBoundingClientRect();
-    return { x: r.left + 4, y: r.top + 4 };
+    const rad = r.width / 2 + extra;
+    return { x: r.left + r.width / 2 + Math.cos(ANG) * rad, y: r.top + r.height / 2 + Math.sin(ANG) * rad };
+  }
+  function anchor(): Pt {
+    return onCircle(-2);
   }
   function spot(): Pt {
-    const r = o.panel.getBoundingClientRect();
-    // En pantallas chicas no hay lugar a la izquierda del panel: queda arriba
-    return r.left > 80 ? { x: r.left - 28, y: r.top - 28 } : { x: r.left + 34, y: r.top - 30 };
+    const p = onCircle(40);
+    // Siempre dentro de la pantalla (en celular el círculo casi la ocupa toda)
+    return { x: Math.max(26, Math.min(innerWidth - 110, p.x)), y: Math.max(30, Math.min(innerHeight - 30, p.y)) };
   }
 
   // ---------- Dibujo continuo (el panel se mueve mientras abre/cierra) ----------
@@ -170,8 +176,10 @@ export function createCloser(o: CloserOptions) {
     const d = p.dash!;
     if (roam === "core") return o.prey.preyAt(d.i);
     if (d.corner === 4) return spot();
+    // Se tira contra un punto del borde del círculo
     const r = o.panel.getBoundingClientRect();
-    return { x: d.corner % 2 ? r.right - 4 : r.left + 4, y: d.corner < 2 ? r.top + 4 : r.bottom - 4 };
+    const a = d.corner * (Math.PI / 2) + Math.PI / 4;
+    return { x: r.left + r.width / 2 + Math.cos(a) * (r.width / 2), y: r.top + r.height / 2 + Math.sin(a) * (r.height / 2) };
   }
 
   function startDash(p: Pest, time: number) {

@@ -1,8 +1,8 @@
 // Tres punteros azules (más chicos) que arman y desarman la pantalla de cada sección:
-//   MARCO     dibuja el rectángulo del panel arrastrando desde una esquina
+//   MARCO     dibuja el borde del nodo ampliado dando la vuelta al círculo
 //   TÍTULO    escribe el código y el título
 //   CONTENIDO va revelando el contenido de arriba hacia abajo
-// Al cerrar borran todo al revés y el MARCO pliega el panel hasta hacerlo desaparecer.
+// Al cerrar borran todo al revés el MARCO borra el borde y el nodo se repliega.
 
 import { sfx } from "./sound";
 import { createRunner, makeAgent, click, show, hide, lerp, easeOut, ticker, type Pt } from "./agent-kit";
@@ -36,17 +36,22 @@ export function createPanelCrew(o: PanelCrewOptions) {
   const set = (el: HTMLElement, name: string, v: number) =>
     el.style.setProperty(name, String(Math.max(0, Math.min(1, v))));
   const rect = () => o.panel.getBoundingClientRect();
+  // Punto del borde del círculo: t = 0 arriba, da la vuelta en sentido horario
+  const rimAt = (t: number): Pt => {
+    const r = rect();
+    const ang = -Math.PI / 2 + t * Math.PI * 2;
+    return { x: r.left + r.width / 2 + Math.cos(ang) * (r.width / 2), y: r.top + r.height / 2 + Math.sin(ang) * (r.height / 2) };
+  };
 
   function setFrame(p: number) {
     set(o.panel, "--pw", p);
     set(o.panel, "--ph", p);
+    // Caja de selección alrededor del nodo ampliado mientras se dibuja su borde
     const r = rect();
-    const w = r.width * p;
-    const h = r.height * p;
-    draft.style.width = `${w}px`;
-    draft.style.height = `${h}px`;
+    draft.style.width = `${r.width}px`;
+    draft.style.height = `${r.height}px`;
     draft.style.transform = `translate(${r.left}px, ${r.top}px)`;
-    draft.dataset.size = `${Math.round(w)}×${Math.round(h)}`;
+    draft.dataset.size = `${Math.round(r.width)}×${Math.round(r.height)}`;
   }
 
   function flashDraft() {
@@ -84,23 +89,17 @@ export function createPanelCrew(o: PanelCrewOptions) {
       if (fresh) setFrame(0);
     },
 
-    /** MARCO dibuja el panel desde su esquina superior izquierda. */
+    /** MARCO dibuja el borde del nodo ampliado dando la vuelta al círculo. */
     async frameIn() {
       if (o.reduceMotion) return true;
       const g = R.next();
       const r0 = rect();
-      show(framer, { x: r0.left - 40, y: r0.top + 50 }, "MARCO");
-      if (!(await go(framer, () => ({ x: rect().left, y: rect().top }), 300, g))) return false;
+      show(framer, { x: r0.left + r0.width / 2 - 60, y: r0.top - 40 }, "MARCO");
+      if (!(await go(framer, () => rimAt(0), 300, g))) return false;
       click(framer);
       sfx.grab();
       draft.classList.add("is-drag");
-      const ok = await go(
-        framer,
-        () => ({ x: rect().right, y: rect().bottom }),
-        620,
-        g,
-        (e) => setFrame(e),
-      );
+      const ok = await trace(framer, 820, g, rimAt, (t) => setFrame(t), (t) => t);
       if (!ok) return false;
       setFrame(1);
       flashDraft();
@@ -176,26 +175,19 @@ export function createPanelCrew(o: PanelCrewOptions) {
       return done.every(Boolean);
     },
 
-    /** MARCO agarra la esquina inferior derecha y pliega el panel hasta desaparecer. */
+    /** MARCO borra el borde dando la vuelta al revés; después el nodo se repliega. */
     async collapse() {
       if (o.reduceMotion) return true;
       const g = R.next();
       const r0 = rect();
-      show(framer, { x: r0.right + 40, y: r0.bottom - 30 }, "MARCO");
-      if (!(await go(framer, () => ({ x: rect().right, y: rect().bottom }), 260, g))) return false;
+      show(framer, { x: r0.right + 30, y: r0.top + r0.height / 2 }, "MARCO");
+      if (!(await go(framer, () => rimAt(1), 240, g))) return false;
       click(framer);
       sfx.grab();
       draft.classList.remove("is-flash");
       draft.classList.add("is-drag");
       setFrame(1);
-      const ok = await go(
-        framer,
-        () => ({ x: rect().left, y: rect().top }),
-        460,
-        g,
-        (e) => setFrame(1 - e),
-        easeOut,
-      );
+      const ok = await trace(framer, 560, g, (t) => rimAt(1 - t), (t) => setFrame(1 - t), (t) => t);
       if (!ok) return false;
       setFrame(0);
       hideAll();

@@ -101,8 +101,12 @@ body.is-awake .hud__status b { color: var(--cyan); }
   z-index: 2;
   transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* Con una sección abierta el escenario se acerca al nodo y se desvanece */
+.stage { transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.6s ease; }
 body.has-panel .stage {
-  transform: translateX(-22vw) scale(0.72);
+  transform: scale(2.6);
+  opacity: 0.12;
+  pointer-events: none;
 }
 
 .links {
@@ -293,34 +297,95 @@ body.is-awake .hint { visibility: hidden; animation: none; opacity: 0; }
   letter-spacing: 0.2em;
 }
 
-/* ---------- Panel ---------- */
+/* ---------- Panel: el nodo ampliado ---------- */
 .panel {
+  --size: min(80vmin, 640px);
   position: fixed;
   z-index: 4;
+  left: 50%;
   top: 50%;
-  right: clamp(16px, 4vw, 64px);
-  width: min(460px, calc(100vw - 32px));
-  max-height: min(70vh, 560px);
-  overflow: auto;
-  padding: 1.75rem;
-  background: var(--panel);
-  border: 1px solid var(--cyan-soft);
-  backdrop-filter: blur(6px);
-  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, rgba(8, 30, 44, 0.97), rgba(3, 12, 20, 0.97) 70%);
+  box-shadow: inset 0 0 60px rgba(80, 220, 255, 0.12);
   opacity: 0;
   pointer-events: none;
-  transform: translate(30px, -50%);
-  transition: opacity 0.45s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Sale del nodo presionado (--fx/--fy) girando en 3D hasta quedar de frente */
+  transform: translate(var(--fx, 0px), var(--fy, 0px)) perspective(900px) rotateX(55deg) rotateZ(-20deg) scale(0.12);
+  transition: opacity 0.4s ease, transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 body.has-panel .panel {
   opacity: 1;
   pointer-events: auto;
-  transform: translate(0, -50%);
+  transform: translate(0, 0) perspective(900px) rotateX(0) rotateZ(0) scale(1);
 }
+/* Borde del nodo: lo dibuja el puntero MARCO dando la vuelta (--pw de 0 a 1) */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--cyan);
+  box-shadow: 0 0 18px rgba(80, 220, 255, 0.35), inset 0 0 12px rgba(80, 220, 255, 0.25);
+  -webkit-mask: conic-gradient(#000 calc(var(--pw, 1) * 360deg), transparent 0);
+  mask: conic-gradient(#000 calc(var(--pw, 1) * 360deg), transparent 0);
+  pointer-events: none;
+  z-index: 2;
+}
+/* Contenido dentro del círculo (cuadrado inscripto), con scroll propio */
+.panel__inner {
+  position: relative;
+  z-index: 1;
+  width: 70%;
+  max-height: 66%;
+  overflow: auto;
+  padding: 0.5rem 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan-faint) transparent;
+}
+/* Anillos que giran en 3D alrededor: estamos dentro del nodo */
+.panel__orb {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  perspective: 700px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.panel__orb i {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  border: 1px solid rgba(80, 220, 255, 0.16);
+  transform-style: preserve-3d;
+}
+.panel__orb i:nth-child(1) {
+  inset: 1.5%;
+  border: 2px dotted rgba(80, 220, 255, 0.35);
+  animation: spin 50s linear infinite;
+}
+.panel__orb i:nth-child(2) { animation: orb-y 11s linear infinite; }
+.panel__orb i:nth-child(3) { animation: orb-x 15s linear infinite; border-style: dashed; }
+.panel__orb i:nth-child(4) { inset: 9%; animation: orb-xy 19s linear infinite; }
+.panel__orb i:nth-child(5) {
+  inset: 0;
+  border: 0;
+  background: conic-gradient(from 0deg, transparent 0 82%, rgba(80, 220, 255, 0.12) 96%, transparent);
+  animation: spin 7s linear infinite;
+}
+@keyframes orb-y { to { transform: rotateY(360deg); } }
+@keyframes orb-x { to { transform: rotateX(360deg); } }
+@keyframes orb-xy { to { transform: rotate3d(1, 1, 0, 360deg); } }
 .panel__head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
+  text-align: center;
   gap: 1rem;
   margin-bottom: 1.25rem;
   padding-bottom: 0.9rem;
@@ -392,15 +457,8 @@ body.has-panel .panel {
 /* ---------- Celular ---------- */
 @media (max-width: 720px) {
   .hud__clock { display: none; }
-  body.has-panel .stage { transform: translateY(-19vh) scale(0.6); }
-  .panel {
-    top: auto;
-    bottom: 16px;
-    right: 16px;
-    max-height: 55vh;
-    transform: translateY(30px);
-  }
-  body.has-panel .panel { transform: translateY(0); }
+  .panel { --size: min(94vw, 72vh); }
+  .panel__inner { width: 74%; max-height: 70%; }
   .node__dot { width: 44px; height: 44px; }
   .core { width: 120px; }
   .hint { top: calc(50% + 80px); }
@@ -752,16 +810,6 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   top: 12px;
   font-size: 0.45rem;
 }
-/* Con punteros, el panel no se desliza: lo revela el marco que dibujan (--pw/--ph) */
-.panel.panel--agents {
-  /* el desenfoque de fondo no respeta la máscara: se reemplaza por un fondo más opaco */
-  backdrop-filter: none;
-  background: rgba(4, 18, 28, 0.93);
-  transform: translate(0, -50%);
-  transition: opacity 0.3s ease;
-  -webkit-mask: linear-gradient(#000 0 0) no-repeat 0 0 / calc(var(--pw, 1) * 100%) calc(var(--ph, 1) * 100%);
-  mask: linear-gradient(#000 0 0) no-repeat 0 0 / calc(var(--pw, 1) * 100%) calc(var(--ph, 1) * 100%);
-}
 .panel__code { clip-path: inset(-4px calc((1 - var(--code, 1)) * 100%) -4px 0); }
 .panel__title { clip-path: inset(-6px calc((1 - var(--ttl, 1)) * 100%) -6px 0); }
 .panel__body { clip-path: inset(0 0 calc((1 - var(--body, 1)) * 100%) 0); }
@@ -771,9 +819,6 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   --c: var(--cyan);
 }
 .sel--draft.is-drag { opacity: 1; }
-@media (max-width: 720px) {
-  .panel.panel--agents { transform: none; }
-}
 
 /* =========================================================
    Copyright al pie (lo coloca el puntero amarillo)
@@ -819,3 +864,4 @@ body.is-awake .core__heart { animation-name: heartbeat; }
   border-color: #ffd84a;
   box-shadow: 0 0 0 4px rgba(255, 216, 74, 0.18), 0 0 22px rgba(255, 216, 74, 0.45);
 }
+.panel__list li > span:first-child { flex-shrink: 0; }
