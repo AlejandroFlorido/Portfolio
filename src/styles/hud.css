@@ -964,3 +964,29 @@ body.has-3d .node__dot {
 body.has-3d .node__dot::before { display: none; }
 body.has-3d .node.is-far { opacity: 0.55; }
 body.has-3d .node.is-behind { opacity: 0; pointer-events: none; }
+
+/* ---------- Dentro del nodo (3D) ----------
+   Al abrir una sección la cámara entra en el nodo: el canvas pasa a mostrar su
+   interior, así que el escenario no se agranda; solo se apaga lo de HTML */
+body.has-3d.has-panel .stage,
+body.has-3d.is-inside .stage {
+  transform: none;
+  opacity: 1;
+}
+body.has-3d.is-inside .stage > :not(.world) {
+  opacity: 0;
+  pointer-events: none;
+}
+#topo,
+.vignette { transition: opacity 0.9s ease; }
+body.has-3d.is-inside #topo { opacity: 0.08; }
+body.has-3d.is-inside .vignette { opacity: 0.5; }
+/* El panel deja ver el interior del nodo detrás del contenido */
+body.has-3d .panel {
+  background: radial-gradient(circle at 50% 45%, rgba(6, 30, 44, 0.78), rgba(3, 14, 22, 0.55) 70%, rgba(3, 14, 22, 0.2));
+  transform: perspective(900px) rotateX(35deg) scale(0.5);
+}
+body.has-3d.has-panel .panel { transform: perspective(900px) rotateX(0) scale(1); }
+/* En reposo el núcleo se puede girar arrastrando */
+body.has-3d:not(.is-awake):not(.is-building) .core { cursor: grab; touch-action: none; }
+body.has-3d.is-dragging-world .core { cursor: grabbing; }

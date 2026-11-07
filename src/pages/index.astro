@@ -137,6 +137,7 @@ const base = import.meta.env.BASE_URL;
             !body.classList.contains("is-building") &&
             !body.classList.contains("has-panel"),
           awake: () => body.classList.contains("is-awake"),
+          canSpin: () => !body.classList.contains("is-awake") && !body.classList.contains("is-building"),
         })
       : null;
     if (world) body.classList.add("has-3d");
@@ -421,7 +422,9 @@ const base = import.meta.env.BASE_URL;
         if (flying) return;
         flying = true;
         sfx.hover();
-        await world.focus(index);
+        // Entramos en el nodo: el fondo y todo pasa a ser su interior
+        body.classList.add("is-inside");
+        await world.enter(index);
         flying = false;
       }
       openPanelNow(id);
@@ -449,8 +452,9 @@ const base = import.meta.env.BASE_URL;
         if (fresh) {
           // El nodo se amplía desde donde está: la pantalla sale de él y el
           // escenario se acerca a ese nodo, como si entráramos en él
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
+          // (en 3D ya estamos dentro del nodo, así que se abre desde el centro)
+          const cx = world ? innerWidth / 2 : rect.left + rect.width / 2;
+          const cy = world ? innerHeight / 2 : rect.top + rect.height / 2;
           panel.style.setProperty("--fx", `${cx - innerWidth / 2}px`);
           panel.style.setProperty("--fy", `${cy - innerHeight / 2}px`);
           stage.style.transformOrigin = `${cx}px ${cy}px`;
@@ -483,8 +487,12 @@ const base = import.meta.env.BASE_URL;
       // al final el marco se pliega y recién ahí se cierra la sección
       await Promise.all([closer.unbuild(), panelCrew.clear()]);
       await panelCrew.collapse();
-      // La cámara se aleja otra vez a la vista general
-      world?.home();
+      // Salimos del nodo y la cámara se aleja otra vez a la vista general
+      if (world) {
+        body.classList.remove("is-inside");
+        await world.exit();
+        world.home();
+      }
       closing = false;
       body.classList.remove("has-panel");
       nodeButtons.forEach((b) => b.classList.remove("is-active"));
@@ -495,6 +503,7 @@ const base = import.meta.env.BASE_URL;
 
     // ---------- Eventos ----------
     core.addEventListener("click", () => {
+      if (world?.justDragged()) return; // fue un giro, no un clic
       if (body.classList.contains("is-booting") || body.classList.contains("is-building") || closing) return;
       if (!body.classList.contains("is-awake")) wake();
       else if (body.classList.contains("has-panel")) closePanel();
