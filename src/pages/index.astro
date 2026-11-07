@@ -67,13 +67,17 @@ const base = import.meta.env.BASE_URL;
   </main>
 
   <aside class="panel" aria-live="polite" aria-labelledby="panel-title" data-panel>
-    <div class="panel__head">
-      <div>
-        <p class="panel__code" data-panel-code></p>
-        <h2 class="panel__title" id="panel-title" data-panel-title></h2>
+    <!-- Anillos en 3D: la sensación de estar dentro del nodo -->
+    <div class="panel__orb" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="panel__inner">
+      <div class="panel__head">
+        <div>
+          <p class="panel__code" data-panel-code></p>
+          <h2 class="panel__title" id="panel-title" data-panel-title></h2>
+        </div>
       </div>
+      <div class="panel__body" data-panel-body></div>
     </div>
-    <div class="panel__body" data-panel-body></div>
   </aside>
 
   <span class="closer__link" aria-hidden="true" data-closer-link></span>
@@ -281,7 +285,8 @@ const base = import.meta.env.BASE_URL;
       core,
       asleep: () => !body.classList.contains("is-awake") && !body.classList.contains("is-booting"),
       nodes: nodeButtons,
-      patrolling: () => body.classList.contains("is-awake") && !body.classList.contains("is-building"),
+      patrolling: () =>
+        body.classList.contains("is-awake") && !body.classList.contains("is-building") && !body.classList.contains("has-panel"),
     });
 
     // ---------- Estados ----------
@@ -346,6 +351,15 @@ const base = import.meta.env.BASE_URL;
         panelCode.textContent = `${node.code} // acceso concedido`;
         panelBody.replaceChildren(tpl.content.cloneNode(true));
         panelTitle.textContent = "";
+        if (fresh) {
+          // El nodo se amplía desde donde está: la pantalla sale de él y el
+          // escenario se acerca a ese nodo, como si entráramos en él
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          panel.style.setProperty("--fx", `${cx - innerWidth / 2}px`);
+          panel.style.setProperty("--fy", `${cy - innerHeight / 2}px`);
+          stage.style.transformOrigin = `${cx}px ${cy}px`;
+        }
         panelCrew.prepare(fresh);
         panel.classList.remove("is-scanning");
         void panel.offsetWidth; // reinicia la animación de escaneo
