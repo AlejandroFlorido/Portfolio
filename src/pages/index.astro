@@ -48,6 +48,9 @@ const base = import.meta.env.BASE_URL;
         <circle class="core__ring core__ring--arc" cx="100" cy="100" r="64"></circle>
         <circle class="core__heart" cx="100" cy="100" r="26"></circle>
       </svg>
+      <span class="globe globe--core" aria-hidden="true">
+        <span class="globe__spin"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </span>
       <span class="core__wave" aria-hidden="true"></span>
       <span class="core__wave core__wave--late" aria-hidden="true"></span>
     </button>
@@ -57,7 +60,11 @@ const base = import.meta.env.BASE_URL;
       {
         nodes.map((node, i) => (
           <button class="node" type="button" data-node={node.id} style={`--delay: ${0.15 + i * 0.09}s`}>
-            <span class="node__dot" />
+            <span class="node__dot">
+              <span class="globe" aria-hidden="true">
+                <span class="globe__spin"><i /><i /><i /><i /><i /></span>
+              </span>
+            </span>
             <span class="node__label">{node.label}</span>
             <span class="node__code">{node.code}</span>
           </button>
@@ -232,6 +239,18 @@ const base = import.meta.env.BASE_URL;
       packetState[i].t = 0;
       packetState[i].burst = 1;
     }
+
+    // ---------- Inclinación 3D: nodos y núcleo miran hacia el mouse ----------
+    let tiltFrame = 0;
+    addEventListener("pointermove", (e) => {
+      if (tiltFrame) return;
+      tiltFrame = requestAnimationFrame(() => {
+        tiltFrame = 0;
+        const root = document.documentElement.style;
+        root.setProperty("--mx", ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
+        root.setProperty("--my", ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
+      });
+    });
 
     // ---------- Punteros que arman la interfaz ----------
     const crew = createCrew({
