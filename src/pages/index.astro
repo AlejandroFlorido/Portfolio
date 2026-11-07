@@ -483,9 +483,19 @@ const base = import.meta.env.BASE_URL;
       if (withSound) sfx.close();
       setStatus("cerrando sección…");
       openTurn++;
-      // Los rojos desarman el nodo de cerrar mientras los azules borran la pantalla;
-      // al final el marco se pliega y recién ahí se cierra la sección
-      await Promise.all([closer.unbuild(), panelCrew.clear()]);
+      const closedIndex = nodeButtons.findIndex((b) => b.classList.contains("is-active"));
+      // En 3D el nodo se pone rojo y los punteros rojos borran todo; cuando
+      // terminan vuelve a azul. Al final el marco se pliega y se cierra la sección
+      if (world) {
+        body.classList.add("is-purging");
+        world.tint(1);
+        await new Promise((r) => setTimeout(r, 450)); // primero se nota el rojo
+      }
+      await Promise.all([closer.unbuild(), panelCrew.clear(!!world)]);
+      if (world) {
+        body.classList.remove("is-purging");
+        await world.tint(0);
+      }
       await panelCrew.collapse();
       // Salimos del nodo y la cámara se aleja otra vez a la vista general
       if (world) {
@@ -499,6 +509,8 @@ const base = import.meta.env.BASE_URL;
       links.forEach((l) => l.classList.remove("is-active"));
       setStatus(ONLINE);
       history.replaceState(null, "", location.pathname);
+      // El amarillo va corriendo a revisar que el cierre no haya roto nada
+      if (withSound && closedIndex >= 0) window.setTimeout(() => keeper.checkClosed(closedIndex), 350);
     }
 
     // ---------- Eventos ----------

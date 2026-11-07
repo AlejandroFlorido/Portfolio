@@ -152,12 +152,18 @@ export function createWorld(o: WorldOptions) {
   const inner = new THREE.Group();
   inner.visible = false;
   scene.add(inner);
-  const innerMats: { m: THREE.Material & { opacity: number }; base: number }[] = [];
-  const innerMat = <M extends THREE.Material & { opacity: number }>(m: M, base: number) => {
+  type Tintable = THREE.Material & { opacity: number; color: THREE.Color };
+  const innerMats: { m: Tintable; base: number; blue: THREE.Color; red: THREE.Color }[] = [];
+  const innerMat = <M extends Tintable>(m: M, base: number) => {
     m.transparent = true;
     m.opacity = 0;
     m.depthWrite = false;
-    innerMats.push({ m, base });
+    // Versión roja del mismo tono (para cuando los rojos cierran el nodo)
+    const blue = m.color.clone();
+    const hsl = { h: 0, s: 0, l: 0 };
+    blue.getHSL(hsl);
+    const red = new THREE.Color().setHSL(0.985, Math.max(0.6, hsl.s), hsl.l * 0.95);
+    innerMats.push({ m, base, blue, red });
     return m;
   };
   // Cúpula de meridianos y paralelos: las "paredes" del nodo vistas desde adentro
@@ -218,7 +224,13 @@ export function createWorld(o: WorldOptions) {
   const flowGeo = new THREE.BufferGeometry();
   flowGeo.setAttribute("position", new THREE.BufferAttribute(flowPos, 3));
   inner.add(new THREE.Points(flowGeo, innerMat(new THREE.PointsMaterial({ color: 0xbff4ff, size: 2, sizeAttenuation: false }), 0.8)));
-  const clearColor = new THREE.Color(0x041a26);
+  const clearBlue = new THREE.Color(0x041a26);
+  const clearRed = new THREE.Color(0x24060c);
+  const clearColor = new THREE.Color();
+  let tint = 0; // 0 = azul, 1 = rojo (cierre)
+  let tintGoal = 0;
+  const NODE_EMI = new THREE.Color(0x50dcff);
+  const NODE_RED = new THREE.Color(0xff4d5e);
   let inside = 0; // 0 = afuera, 1 = dentro del nodo
   let insideGoal = 0;
   let insideNode = -1;
@@ -397,12 +409,17 @@ export function createWorld(o: WorldOptions) {
     inside += (insideGoal - inside) * (1 - Math.exp(-dt * 2.6));
     if (Math.abs(insideGoal - inside) < 0.002) inside = insideGoal;
     const ins = inside * inside * (3 - 2 * inside);
+    tint += (tintGoal - tint) * (1 - Math.exp(-dt * 3));
+    clearColor.copy(clearBlue).lerp(clearRed, tint);
     renderer.setClearColor(clearColor, ins * 0.94);
     inner.visible = ins > 0.01 && insideNode >= 0;
     if (inner.visible) {
       inner.position.copy(nodeWorld[insideNode]);
       inner.scale.setScalar(0.35 + 0.65 * ins);
-      for (const { m, base } of innerMats) m.opacity = base * Math.max(0, (ins - 0.3) / 0.7);
+      for (const { m, base, blue, red } of innerMats) {
+        m.opacity = base * Math.max(0, (ins - 0.3) / 0.7);
+        m.color.copy(blue).lerp(red, tint);
+      }
       dome.rotation.y += dt * 0.05;
       innerRings.forEach((r, k) => {
         r.rotation.z += dt * (0.12 + k * 0.07) * (k % 2 ? -1 : 1);
@@ -447,7 +464,9 @@ export function createWorld(o: WorldOptions) {
       // El nodo en el que se entra crece hasta envolver a la cámara
       s.g.scale.setScalar(sc * (i === insideNode ? 1 + ins * ins * 26 : 1));
       const hot = btn.classList.contains("is-active") || btn.matches(":hover");
-      (s.mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.1 + built * (hot ? 0.55 : 0.18);
+      const mm = s.mesh.material as THREE.MeshStandardMaterial;
+      mm.emissiveIntensity = 0.1 + built * (hot ? 0.55 : 0.18);
+      mm.emissive.copy(NODE_EMI).lerp(NODE_RED, i === insideNode ? tint : 0);
       s.wire.rotation.y += dt * (hot ? 1.6 : 0.5);
       s.ring.rotation.z += dt * 0.8;
       const line = beams[i];
@@ -535,6 +554,11 @@ export function createWorld(o: WorldOptions) {
       goal.dist = 3;
       await until(() => inside < 0.08, 1600);
       insideNode = -1;
+    },
+    /** Tiñe de rojo (1) o devuelve a azul (0) el nodo en el que estamos. */
+    tint(v: number) {
+      tintGoal = v;
+      return until(() => Math.abs(tint - v) < 0.05, 900);
     },
     /** true si recién terminó un arrastre (el clic que lo sigue no cuenta). */
     justDragged: () => performance.now() - dragged < 250,

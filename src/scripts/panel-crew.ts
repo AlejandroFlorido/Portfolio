@@ -143,35 +143,44 @@ export function createPanelCrew(o: PanelCrewOptions) {
       return done.every(Boolean);
     },
 
-    /** Borran contenido y textos (antes de plegar el marco). */
-    async clear() {
+    /** Borran contenido y textos (antes de plegar el marco). Con red, lo hacen como punteros rojos. */
+    async clear(red = false) {
       if (o.reduceMotion) return true;
       const g = R.next();
+      const k = red ? 2.6 : 1; // los rojos borran más despacio, para que se vea
+      [writer, filler].forEach((a, k) => {
+        a.el.classList.toggle("agent--eraser", red);
+        a.el.style.setProperty("--c", red ? (k ? "#ff6b78" : "#ff4d5e") : k ? "#74d4f2" : "#a6f4ff");
+      });
       const erase = (async () => {
-        show(writer, { x: rect().right - 20, y: rect().top + 50 }, "TÍTULO");
-        if (!(await go(writer, () => along(o.title, 1), 220, g))) return false;
+        show(writer, { x: rect().right - 20, y: rect().top + 50 }, red ? "BORRAR" : "TÍTULO");
+        if (!(await go(writer, () => along(o.title, 1), 220 * k, g))) return false;
         const tick = ticker(6, sfx.type);
-        let ok = await trace(writer, 260, g, (t) => along(o.title, 1 - t), (t) => {
+        let ok = await trace(writer, 260 * k, g, (t) => along(o.title, 1 - t), (t) => {
           set(o.panel, "--ttl", 1 - t);
           tick(t);
         }, (t) => t);
         if (!ok) return false;
-        if (!(await go(writer, () => along(o.code, 1), 140, g))) return false;
-        ok = await trace(writer, 220, g, (t) => along(o.code, 1 - t), (t) => set(o.panel, "--code", 1 - t), (t) => t);
+        if (!(await go(writer, () => along(o.code, 1), 140 * k, g))) return false;
+        ok = await trace(writer, 220 * k, g, (t) => along(o.code, 1 - t), (t) => set(o.panel, "--code", 1 - t), (t) => t);
         if (!ok) return false;
         hide(writer);
         return true;
       })();
       const empty = (async () => {
-        show(filler, { x: rect().left + 80, y: rect().bottom - 10 }, "CONTENIDO");
-        if (!(await go(filler, () => sweep(1), 220, g))) return false;
+        show(filler, { x: rect().left + 80, y: rect().bottom - 10 }, red ? "BORRAR" : "CONTENIDO");
+        if (!(await go(filler, () => sweep(1), 220 * k, g))) return false;
         click(filler);
-        const ok = await trace(filler, 480, g, (t) => sweep(1 - t), (t) => set(o.panel, "--body", 1 - t), (t) => t);
+        const ok = await trace(filler, 480 * k, g, (t) => sweep(1 - t), (t) => set(o.panel, "--body", 1 - t), (t) => t);
         if (!ok) return false;
         hide(filler);
         return true;
       })();
       const done = await Promise.all([erase, empty]);
+      [writer, filler].forEach((a, k) => {
+        a.el.classList.remove("agent--eraser");
+        a.el.style.setProperty("--c", k ? "#74d4f2" : "#a6f4ff");
+      });
       return done.every(Boolean);
     },
 
