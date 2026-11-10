@@ -296,83 +296,63 @@ function thump(volume: number, delay = 0) {
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const side = () => Math.random() * 1.2 - 0.6;
 
-// ---------- Fondo con el núcleo encendido (como en la referencia) ----------
-// El colchón de cómputo 311/415/622/830 Hz titilando sin parar, muy bajito,
-// un leve rumor grave y, cada tanto, alguna ráfaga o barrido suelto.
-let hum: { nodes: AudioScheduledSourceNode[]; gain: GainNode; flicks: GainNode[] } | null = null;
-let flickTimer = 0;
-let eventTimer = 0;
+// ---------- Fondo con el núcleo encendido ----------
+// Ambiente melódico con la paleta de la referencia: los tonos 311/415/622 Hz
+// respiran lento (sin titilar) y encima suena una melodía suave en Sol#
+// menor pentatónica, nota a nota, con mucha reverb.
+let hum: { nodes: AudioScheduledSourceNode[]; gain: GainNode } | null = null;
+let melodyTimer = 0;
+const MELODY = [415, 494, 554, 622, 740, 830, 988, 1109, 1245];
 
 function startHum() {
   const ac = audio();
   if (!ac || hum) return;
   const gain = ac.createGain();
   gain.gain.setValueAtTime(0.0001, ac.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.012 * VOL, ac.currentTime + 3);
+  gain.gain.exponentialRampToValueAtTime(0.01 * VOL, ac.currentTime + 4);
   const nodes: AudioScheduledSourceNode[] = [];
-  const flicks = BED.map((f, i) => {
+  // Colchón que respira: cada tono sube y baja con su propio ritmo lento
+  [311, 415, 622].forEach((f, i) => {
     const o = ac.createOscillator();
     o.frequency.value = hz(f);
-    const flick = ac.createGain();
-    flick.gain.value = 0.3;
+    const breathe = ac.createGain();
+    breathe.gain.value = 0.5;
+    const lfo = ac.createOscillator();
+    lfo.frequency.value = [0.07, 0.11, 0.05][i];
+    const depth = ac.createGain();
+    depth.gain.value = 0.45;
+    lfo.connect(depth).connect(breathe.gain);
     const lvl = ac.createGain();
-    lvl.gain.value = [1, 0.9, 0.55, 0.3][i];
-    o.connect(flick).connect(lvl).connect(gain);
+    lvl.gain.value = [0.8, 0.6, 0.3][i];
+    o.connect(breathe).connect(lvl).connect(gain);
     o.start();
-    nodes.push(o);
-    return flick;
+    lfo.start();
+    nodes.push(o, lfo);
   });
-  // Rumor grave: ruido marrón muy filtrado
-  const len = ac.sampleRate * 2;
-  const buf = ac.createBuffer(1, len, ac.sampleRate);
-  const d = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < len; i++) {
-    last = last * 0.98 + (Math.random() * 2 - 1) * 0.02;
-    d[i] = last * 5;
-  }
-  const rumble = ac.createBufferSource();
-  rumble.buffer = buf;
-  rumble.loop = true;
-  const lp = ac.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 180;
-  const rg = ac.createGain();
-  rg.gain.value = 0.5;
-  rumble.connect(lp).connect(rg).connect(gain);
-  rumble.start();
-  nodes.push(rumble);
-  out(gain, 0.25);
-  hum = { nodes, gain, flicks };
+  out(gain, 0.5);
+  hum = { nodes, gain };
 
-  // Titileo: cada tono cambia de volumen al azar, programado de a 1 s
-  const flicker = () => {
-    if (!ctx || !hum) return;
-    const t0 = ctx.currentTime;
-    hum.flicks.forEach((g) => {
-      for (let t = 0; t < 1.05; t += 0.06 + Math.random() * 0.12) {
-        g.gain.setTargetAtTime(Math.random() < 0.3 ? 0.06 : 0.4 + Math.random() * 0.6, t0 + t, 0.025);
-      }
-    });
-    flickTimer = window.setTimeout(flicker, 1000);
-  };
-  flicker();
-
-  // Datos sueltos de vez en cuando, bajitos
-  const events = () => {
+  // Melodía: camina por la escala de a pasos chicos, notas largas y suaves
+  let idx = 3;
+  const play = () => {
     if (!hum) return;
-    const r = Math.random();
-    if (r < 0.45) stutter(pick([6834, 4571, 12868, 2900]), 3 + Math.floor(Math.random() * 4), 0.006, 0, 40, side());
-    else if (r < 0.75) zip(9000 + Math.random() * 4000, 2500 + Math.random() * 2500, 0.5, 0.004, 0, side());
-    else dash(pick(DASH), 0.06, 0.004, 0, side());
-    eventTimer = window.setTimeout(events, 900 + Math.random() * 2200);
+    idx = Math.max(0, Math.min(MELODY.length - 1, idx + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)]));
+    const f = MELODY[idx];
+    const pan = Math.random() * 0.8 - 0.4;
+    tone({ from: f, duration: 2.8, volume: 0.007, attack: 0.35, send: 0.85, pan });
+    tone({ type: "triangle", from: f * 2, duration: 1.6, volume: 0.0015, attack: 0.3, send: 0.9, pan: -pan });
+    // A veces, una segunda nota que contesta
+    if (Math.random() < 0.3) {
+      const j = Math.min(MELODY.length - 1, idx + 2);
+      tone({ from: MELODY[j], duration: 2.4, volume: 0.005, delay: 0.6, attack: 0.3, send: 0.85, pan: -pan });
+    }
+    melodyTimer = window.setTimeout(play, 1800 + Math.random() * 2200);
   };
-  eventTimer = window.setTimeout(events, 1500);
+  melodyTimer = window.setTimeout(play, 2500);
 }
 
 function stopHum() {
-  clearTimeout(flickTimer);
-  clearTimeout(eventTimer);
+  clearTimeout(melodyTimer);
   if (!ctx || !hum) return;
   const { nodes, gain } = hum;
   hum = null;
