@@ -5,9 +5,9 @@
 // así que el contexto se crea en el primer clic.
 
 const STORAGE_KEY = "portfolio-sound";
-// Ajuste global de los efectos: agudo y presente, sonido de sintetizador
-const PITCH = 1.2;
-const VOL = 3.5;
+// Frecuencias tomadas tal cual de la grabación de referencia de Ale (hudSound)
+const PITCH = 1;
+const VOL = 5;
 const hz = (f: number) => Math.min(16000, f * PITCH);
 
 let ctx: AudioContext | null = null;
@@ -174,100 +174,105 @@ function tone({
 function startHum() {}
 function stopHum() {}
 
-/** Ráfaga corta de ruido filtrado (base de clics, relés y cabezales). */
-function burst(volume: number, freq: number, length: number, delay = 0, q = 2, pan = 0, send = 0.15) {
+// ---------- Paleta sacada de la referencia "Digital HUD Sounds" ----------
+// Análisis de la grabación:
+//  - Colchón de "cómputo": senos en 311 / 415 / 622 / 830 Hz (Re# y Sol#,
+//    quintas apiladas) que parpadean en volumen al azar cada ~0,1 s.
+//  - Ráfagas de datos: un tono agudo cortado a ~40 Hz (6834, 4571, 12868 Hz…).
+//  - Barridos finos: senos que caen en curva desde ~12 kHz, o que suben y se
+//    quedan clavados en una nota.
+//  - Guiones cortos de tono puro (2000, 2900, 3800 Hz) y algún golpe grave.
+
+const BED = [311, 415, 622, 830];
+const DASH = [2000, 2310, 2900, 3820, 4570];
+
+/** Colchón de cómputo: los cuatro tonos parpadeando al azar. */
+function bed(duration: number, volume: number, delay = 0) {
   const ac = audio();
   if (!ac) return;
   const t0 = ac.currentTime + delay;
-  const n = Math.ceil(ac.sampleRate * length);
-  const buf = ac.createBuffer(1, n, ac.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 4);
-  const src = ac.createBufferSource();
-  src.buffer = buf;
-  const bp = ac.createBiquadFilter();
-  bp.type = "bandpass";
-  bp.frequency.value = hz(freq);
-  bp.Q.value = q;
   const g = ac.createGain();
-  g.gain.value = volume * VOL * 8;
-  src.connect(bp).connect(g);
-  out(g, send, pan);
-  src.start(t0);
-}
-
-/** Relé que se cierra: clac metálico + golpe seco del chasis. */
-function relay(volume: number, delay = 0) {
-  burst(volume, 2400, 0.018, delay, 3);
-  burst(volume * 0.8, 1300, 0.01, delay + 0.012, 4);
-  tone({ from: 140, to: 60, duration: 0.12, volume: volume * 1.4, delay, attack: 0.002, send: 0.1 });
-}
-
-/**
- * Pluck de sintetizador: dos dientes de sierra desafinados con un filtro que
- * se abre y se cierra rápido. La base del sonido "electrónico".
- */
-function pluck(freq: number, volume: number, delay = 0, duration = 0.28, pan = 0, bright = 7) {
-  const ac = audio();
-  if (!ac) return;
-  const t0 = ac.currentTime + delay;
-  const f = hz(freq);
-  const lp = ac.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.Q.value = 5;
-  lp.frequency.setValueAtTime(Math.min(16000, f * bright), t0);
-  lp.frequency.exponentialRampToValueAtTime(f * 1.1, t0 + duration * 0.8);
-  const g = ac.createGain();
-  env(g, t0, volume * VOL, 0.003, duration);
-  [-7, 7].forEach((c) => {
+  env(g, t0, volume * VOL, Math.min(0.25, duration * 0.2), duration);
+  BED.forEach((f, i) => {
     const o = ac.createOscillator();
-    o.type = "sawtooth";
-    o.frequency.value = f * Math.pow(2, c / 1200);
-    o.connect(lp);
+    o.frequency.value = hz(f);
+    const flick = ac.createGain();
+    flick.gain.setValueAtTime(0, t0);
+    for (let t = 0; t < duration; t += 0.06 + Math.random() * 0.1) {
+      flick.gain.setTargetAtTime(Math.random() < 0.3 ? 0.08 : 0.5 + Math.random() * 0.5, t0 + t, 0.02);
+    }
+    const lvl = ac.createGain();
+    lvl.gain.value = [1, 0.9, 0.6, 0.35][i];
+    o.connect(flick).connect(lvl).connect(g);
     o.start(t0);
     o.stop(t0 + duration + 0.05);
   });
-  lp.connect(g);
-  out(g, 0.55, pan);
+  out(g, 0.3);
 }
 
-/** Arpegio: varias notas en sucesión rápida, rebotando en el eco estéreo. */
-function arp(notes: number[], step: number, volume: number, delay = 0) {
-  notes.forEach((n, i) => pluck(n, volume, delay + i * step, 0.25, i % 2 ? 0.35 : -0.35));
-}
-
-/** Barrido de filtro sobre un acorde de sierras: el "wooow" típico de sintetizador. */
-function sweep(from: number, to: number, duration: number, volume: number, delay = 0, notes = [110, 165, 220]) {
+/** Ráfaga de datos: un tono agudo cortado en pulsos rápidos. */
+function stutter(freq: number, pulses: number, volume: number, delay = 0, rate = 38, pan = 0) {
   const ac = audio();
   if (!ac) return;
   const t0 = ac.currentTime + delay;
-  const lp = ac.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.Q.value = 9;
-  lp.frequency.setValueAtTime(hz(from), t0);
-  lp.frequency.exponentialRampToValueAtTime(hz(to), t0 + duration);
+  const o = ac.createOscillator();
+  o.frequency.value = hz(freq);
   const g = ac.createGain();
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(volume * VOL, t0 + duration * 0.3);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-  notes.forEach((n) =>
-    [-9, 9].forEach((c) => {
-      const o = ac.createOscillator();
-      o.type = "sawtooth";
-      o.frequency.value = hz(n) * Math.pow(2, c / 1200);
-      const og = ac.createGain();
-      og.gain.value = 1 / notes.length;
-      o.connect(og).connect(lp);
-      o.start(t0);
-      o.stop(t0 + duration + 0.05);
-    }),
-  );
-  lp.connect(g);
-  out(g, 0.45);
+  g.gain.setValueAtTime(0, t0);
+  const per = 1 / rate;
+  for (let i = 0; i < pulses; i++) {
+    const t = t0 + i * per;
+    g.gain.setValueAtTime(volume * VOL, t);
+    g.gain.setValueAtTime(0, t + per * 0.55);
+  }
+  o.connect(g);
+  out(g, 0.3, pan);
+  o.start(t0);
+  o.stop(t0 + pulses * per + 0.05);
 }
 
-/** Subida de ruido filtrado (riser), como antes del "drop" en música electrónica. */
-function riser(duration: number, volume: number, delay = 0) {
+/** Barrido fino de seno: cae (o sube) en curva. */
+function zip(from: number, to: number, duration: number, volume: number, delay = 0, pan = 0) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + delay;
+  const o = ac.createOscillator();
+  o.frequency.setValueAtTime(hz(from), t0);
+  o.frequency.setTargetAtTime(hz(to), t0, duration / 3);
+  const g = ac.createGain();
+  env(g, t0, volume * VOL, 0.01, duration);
+  o.connect(g);
+  out(g, 0.35, pan);
+  o.start(t0);
+  o.stop(t0 + duration + 0.05);
+}
+
+/** Sube rápido y se queda clavado en la nota. */
+function lock(from: number, to: number, rise: number, hold: number, volume: number, delay = 0, pan = 0) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + delay;
+  const o = ac.createOscillator();
+  o.frequency.setValueAtTime(hz(from), t0);
+  o.frequency.exponentialRampToValueAtTime(hz(to), t0 + rise);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(volume * VOL, t0 + rise * 0.5);
+  g.gain.setValueAtTime(volume * VOL, t0 + rise + hold);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + rise + hold + 0.04);
+  o.connect(g);
+  out(g, 0.3, pan);
+  o.start(t0);
+  o.stop(t0 + rise + hold + 0.1);
+}
+
+/** Guion corto de tono puro. */
+function dash(freq: number, duration: number, volume: number, delay = 0, pan = 0) {
+  tone({ from: freq, duration, volume, delay, attack: 0.004, send: 0.25, pan });
+}
+
+/** Estática digital (ruido agudo) como la de la referencia. */
+function staticBurst(duration: number, volume: number, delay = 0) {
   const ac = audio();
   if (!ac) return;
   const t0 = ac.currentTime + delay;
@@ -276,26 +281,23 @@ function riser(duration: number, volume: number, delay = 0) {
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const src = ac.createBufferSource();
   src.buffer = buf;
-  const bp = ac.createBiquadFilter();
-  bp.type = "bandpass";
-  bp.Q.value = 3;
-  bp.frequency.setValueAtTime(400, t0);
-  bp.frequency.exponentialRampToValueAtTime(9000, t0 + duration);
+  const hp = ac.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 1600;
   const g = ac.createGain();
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(volume * VOL, t0 + duration * 0.95);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration + 0.05);
-  src.connect(bp).connect(g);
-  out(g, 0.5);
+  env(g, t0, volume * VOL, 0.005, duration);
+  src.connect(hp).connect(g);
+  out(g, 0.2);
   src.start(t0);
 }
 
-/** Golpe de sub-bajo que cae (el "drop"). */
-function sub(volume: number, delay = 0) {
-  tone({ from: 120, to: 38, duration: 0.6, volume, delay, attack: 0.003, send: 0.1 });
+/** Golpe grave seco. */
+function thump(volume: number, delay = 0) {
+  tone({ from: 95, to: 45, duration: 0.35, volume, delay, attack: 0.002, send: 0.1 });
 }
 
-const PENTA = [880, 1047, 1175, 1319, 1568, 1760];
+const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+const side = () => Math.random() * 1.2 - 0.6;
 
 export const sfx = {
   get enabled() {
@@ -313,45 +315,56 @@ export const sfx = {
     } else if (awake) startHum();
   },
   wake() {
-    // Encendido: subida, barrido que se abre, golpe de bajo y arpegio
-    relay(0.015);
-    riser(1.1, 0.03);
-    sweep(150, 4500, 1.4, 0.05);
-    sub(0.12, 1.15);
-    arp([440, 659, 880, 1319, 1760], 0.07, 0.035, 1.2);
+    // Arranque del HUD: golpe, el colchón de cómputo entra y llueven datos
+    thump(0.12);
+    bed(2.4, 0.03, 0.05);
+    lock(2300, 8340, 0.08, 0.25, 0.012, 0.15, -0.4);
+    zip(12000, 4500, 0.5, 0.01, 0.35, 0.5);
+    stutter(6834, 6, 0.02, 0.6, 38, 0.2);
+    zip(13000, 2300, 0.6, 0.009, 0.8, -0.5);
+    stutter(4571, 7, 0.022, 1.05, 40, -0.2);
+    dash(3820, 0.09, 0.014, 1.4, 0.3);
+    stutter(6834, 4, 0.02, 1.6, 38);
   },
   sleep() {
-    // Apagado: arpegio que baja y el filtro que se cierra
-    arp([1319, 880, 659, 440], 0.08, 0.03);
-    sweep(3500, 120, 1.3, 0.045, 0.1);
+    // Apagado: estática, barridos que caen y el colchón que se va
+    staticBurst(0.25, 0.012);
+    bed(0.9, 0.025);
+    zip(12000, 2000, 0.7, 0.012, 0.1, 0.4);
+    zip(9000, 1500, 0.8, 0.01, 0.3, -0.4);
+    thump(0.08, 0.6);
   },
   hover() {
-    pluck(1319, 0.022, 0, 0.18);
+    stutter(6834, 3, 0.014, 0, 40, side());
   },
   open() {
-    // Acceso: barrido rápido y arpegio ascendente
-    sweep(250, 5000, 0.45, 0.04, 0, [220, 330, 440]);
-    arp([523, 784, 1047, 1568], 0.06, 0.032, 0.25);
-    sub(0.06, 0.25);
+    // Acceso: tono que sube y se clava, ráfagas de datos y cómputo
+    lock(2300, 8340, 0.07, 0.18, 0.014, 0, 0.3);
+    bed(1.2, 0.025, 0.05);
+    stutter(4571, 6, 0.022, 0.2, 40, -0.3);
+    zip(12000, 3800, 0.45, 0.01, 0.3, 0.4);
+    stutter(6834, 4, 0.02, 0.5);
   },
   close() {
-    // Cierre en alerta: tres notas que bajan y el filtro que se cierra
-    arp([784, 622, 466], 0.09, 0.035);
-    sweep(3000, 200, 0.6, 0.035, 0.2, [117, 175, 233]);
+    // Cierre en alerta: estática, barrido que cae y ráfagas más graves
+    staticBurst(0.18, 0.014);
+    zip(12000, 2300, 0.45, 0.013, 0.05);
+    stutter(2900, 5, 0.024, 0.2, 30);
+    stutter(2310, 5, 0.024, 0.4, 30);
   },
-  /** Chequeo del puntero amarillo: dos notas ascendentes de "OK". */
+  /** Chequeo del puntero amarillo: guion + ráfaga corta de "OK". */
   check() {
-    pluck(880, 0.032, 0, 0.18);
-    pluck(1319, 0.032, 0.1, 0.3);
+    dash(3820, 0.07, 0.016);
+    stutter(6834, 4, 0.02, 0.1);
   },
   grab() {
-    pluck(659, 0.02, 0, 0.12, 0, 4);
+    dash(2000, 0.05, 0.014);
   },
   drop() {
-    pluck(440, 0.028, 0, 0.2);
-    sub(0.05);
+    stutter(4571, 3, 0.018);
+    thump(0.05, 0.02);
   },
   type() {
-    pluck(PENTA[Math.floor(Math.random() * PENTA.length)], 0.01, 0, 0.1, Math.random() * 0.6 - 0.3);
+    dash(pick(DASH), 0.03, 0.006, 0, side());
   },
 };
