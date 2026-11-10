@@ -5,8 +5,8 @@
 // así que el contexto se crea en el primer clic.
 
 const STORAGE_KEY = "portfolio-sound";
-// Ajuste global de los efectos: todo más agudo (×1,7 ≈ +9 semitonos) y más presente
-const PITCH = 1.7;
+// Ajuste global de los efectos: algo más agudo y más presente
+const PITCH = 1.25;
 const VOL = 1.5;
 const hz = (f: number) => Math.min(16000, f * PITCH);
 
@@ -51,9 +51,9 @@ function audio(): AudioContext | null {
 
     // Reverb + eco estéreo corto (ping-pong) para el aire "holográfico"
     wet = ctx.createGain();
-    wet.gain.value = 0.35;
+    wet.gain.value = 0.5;
     const verb = ctx.createConvolver();
-    verb.buffer = impulse(ctx, 1.6, 3.2);
+    verb.buffer = impulse(ctx, 2.6, 2.6); // cola larga, de sala grande
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
     hp.frequency.value = 500;
@@ -139,6 +139,15 @@ function tone({
   volume *= VOL;
   const osc = ac.createOscillator();
   const gain = ac.createGain();
+  // Las ondas "duras" pasan por un filtro: nada de pitido de 8 bits
+  let src: AudioNode = osc;
+  if (type !== "sine") {
+    const lp = ac.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = Math.min(5000, Math.max(from, to) * 3);
+    osc.connect(lp);
+    src = lp;
+  }
   osc.type = type;
   osc.frequency.setValueAtTime(from, t0);
   osc.frequency.exponentialRampToValueAtTime(to, t0 + duration);
@@ -155,7 +164,7 @@ function tone({
     mod.stop(t0 + duration + 0.05);
   }
   env(gain, t0, volume, attack, duration);
-  osc.connect(gain);
+  src.connect(gain);
   out(gain, send, pan);
   osc.start(t0);
   osc.stop(t0 + duration + 0.05);
@@ -245,8 +254,7 @@ function startHum() {
   const chatter = () => {
     if (!hum) return;
     if (Math.random() < 0.7) {
-      const f = [2350, 3200, 4300, 6400, 8100][Math.floor(Math.random() * 5)];
-      ping(f * (0.98 + Math.random() * 0.04), 0.004 + Math.random() * 0.004, 0.06, 0, Math.random() * 1.4 - 0.7);
+      tick(0.006 + Math.random() * 0.006, 0, Math.random() * 1.4 - 0.7);
     }
     chatterTimer = window.setTimeout(chatter, 250 + Math.random() * 900);
   };
@@ -266,11 +274,6 @@ function stopHum() {
   gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
   nodes.forEach((o) => o.stop(ctx!.currentTime + 1.3));
-}
-
-/** Pitido "de cristal": seno puro con un toque de FM y mucha reverb. */
-function ping(freq: number, volume: number, dur = 0.12, delay = 0, pan = 0) {
-  tone({ from: freq, duration: dur, volume, delay, attack: 0.003, fm: freq * 0.04, ratio: 2.76, send: 0.75, pan });
 }
 
 /** Tono con trémolo rápido (~24 Hz): el "procesando" de las referencias. */
@@ -303,8 +306,74 @@ function warble(freqs: number[], duration: number, volume: number, delay = 0, ra
 
 /** Golpe grave que cae (impacto / despliegue). */
 function boom(volume: number, delay = 0) {
-  tone({ type: "sine", from: 140, to: 32, duration: 0.7, volume, delay, attack: 0.005, send: 0.25 });
-  noise(0.35, volume * 0.5, 260, 60, delay, 0.8, 0.2);
+  tone({ type: "sine", from: 110, to: 30, duration: 0.9, volume, delay, attack: 0.004, send: 0.3 });
+  noise(0.4, volume * 0.4, 200, 50, delay, 0.7, 0.25);
+}
+
+/** Clic de interfaz: un transiente de ruido muy corto y agudo (sin tono). */
+function tick(volume: number, delay = 0, pan = 0) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + delay;
+  const len = Math.ceil(ac.sampleRate * 0.02);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  const hp = ac.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 6500;
+  const g = ac.createGain();
+  g.gain.value = volume * VOL * 6;
+  src.connect(hp).connect(g);
+  out(g, 0.35, pan);
+  src.start(t0);
+}
+
+/** Ráfaga de aire que barre de un lado al otro (whoosh cinematográfico). */
+function whoosh(duration: number, volume: number, from: number, to: number, delay = 0, panFrom = -0.6, panTo = 0.6) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + delay;
+  const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * duration), ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  const bp = ac.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.Q.value = 2.2;
+  bp.frequency.setValueAtTime(from, t0);
+  bp.frequency.exponentialRampToValueAtTime(to, t0 + duration);
+  const g = ac.createGain();
+  // Crece y se va (forma de "swoosh")
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(volume * VOL, t0 + duration * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  const p = ac.createStereoPanner();
+  p.pan.setValueAtTime(panFrom, t0);
+  p.pan.linearRampToValueAtTime(panTo, t0 + duration);
+  src.connect(bp).connect(g).connect(p);
+  out(p, 0.5);
+  src.start(t0);
+}
+
+/** Brillo holográfico: senos levemente desafinados (efecto coro) con cola larga. */
+function shimmer(freqs: number[], duration: number, volume: number, delay = 0, attack = 0.03) {
+  freqs.forEach((f, i) => {
+    [-6, 6].forEach((cents, k) =>
+      tone({
+        from: f * Math.pow(2, cents / 1200),
+        duration,
+        volume: volume / freqs.length,
+        delay: delay + i * 0.025,
+        attack,
+        send: 0.85,
+        pan: k ? 0.35 : -0.35,
+      }),
+    );
+  });
 }
 
 export const sfx = {
@@ -323,59 +392,57 @@ export const sfx = {
     } else if (awake) startHum();
   },
   wake() {
-    // Barrido que sube desde lo grave (como en la referencia), golpe y tono de ~1 kHz
-    tone({ type: "sawtooth", from: 50, to: 620, duration: 1.0, volume: 0.06, attack: 0.4, send: 0.25 });
-    noise(1.0, 0.04, 120, 2600, 0, 5, 0.25);
-    boom(0.16, 0.95);
-    // Tono de ~1 kHz con armónicos pares fuertes (958, 2005, 3982, 5957 Hz)
-    [990, 1990, 3980, 5960].forEach((f, i) =>
-      tone({ from: f, duration: 1.3 - i * 0.2, volume: 0.04 / (i + 1), delay: 1.0, attack: 0.004, send: 0.7 }),
-    );
-    warble([440, 720], 1.2, 0.035, 1.35);
+    // Encendido de película: sube desde lo grave con aire, golpe y un acorde brillante
+    tone({ from: 40, to: 180, duration: 1.1, volume: 0.09, attack: 0.6, send: 0.2 });
+    whoosh(1.1, 0.07, 300, 5000, 0);
+    boom(0.2, 1.0);
+    tick(0.03, 1.0);
+    shimmer([880, 1320, 1760, 2640], 2.6, 0.08, 1.0, 0.02);
+    warble([440, 720], 1.0, 0.02, 1.4);
     startHum();
   },
   sleep() {
-    // Lo mismo al revés: el tono se apaga y el barrido baja
-    warble([720, 440], 0.6, 0.03, 0, 18);
-    tone({ type: "sawtooth", from: 620, to: 45, duration: 1.2, volume: 0.06, delay: 0.2, send: 0.25 });
-    noise(1.0, 0.035, 2600, 120, 0.2, 5);
+    // Al revés: el brillo se apaga, el aire baja y queda un golpe sordo
+    shimmer([2640, 1760, 1320], 0.9, 0.04, 0, 0.01);
+    whoosh(1.0, 0.06, 4000, 250, 0.05, 0.6, -0.6);
+    tone({ from: 180, to: 35, duration: 1.2, volume: 0.08, delay: 0.2, send: 0.25 });
     stopHum();
   },
   hover() {
-    ping(2350, 0.02, 0.08);
+    tick(0.012);
+    shimmer([2350], 0.35, 0.012, 0, 0.01);
   },
   open() {
-    // Pitidos de cristal agudos + confirmación (≈1970 Hz sobre 620/700 Hz)
-    ping(6390, 0.018, 0.1, 0, -0.3);
-    ping(2350, 0.03, 0.14, 0.05, 0.2);
-    ping(8700, 0.01, 0.08, 0.1, 0.4);
-    tone({ from: 1968, duration: 0.18, volume: 0.035, delay: 0.2, send: 0.6 });
-    tone({ type: "triangle", from: 620, duration: 0.2, volume: 0.04, delay: 0.2, send: 0.4 });
-    tone({ type: "triangle", from: 700, duration: 0.24, volume: 0.04, delay: 0.32, send: 0.4 });
-    ping(3185, 0.015, 0.1, 0.45, -0.4);
-    ping(8135, 0.008, 0.08, 0.5, 0.5);
+    // Acceso: ráfaga que entra, clic y acorde de cristal que queda flotando
+    whoosh(0.5, 0.06, 600, 6000, 0, -0.5, 0.5);
+    tick(0.025, 0.42);
+    boom(0.07, 0.42);
+    shimmer([1180, 1770, 2360], 1.6, 0.06, 0.42, 0.01);
+    tone({ from: 4720, duration: 0.5, volume: 0.012, delay: 0.5, fm: 300, ratio: 1.5, send: 0.9 });
   },
   close() {
-    // Alerta: dos bandas con trémolo, más tensas
-    warble([466, 740], 0.7, 0.04, 0, 24);
-    noise(0.5, 0.025, 5000, 400, 0.1, 2);
+    // Cierre en alerta: ráfaga que se va y un trémolo tenso que baja
+    whoosh(0.6, 0.05, 5000, 500, 0, 0.5, -0.5);
+    warble([466, 740], 0.6, 0.03, 0.05, 20);
+    shimmer([1480, 1110], 0.8, 0.03, 0.1, 0.01);
   },
   /** Chequeo del puntero amarillo: acorde que "late" (1071 / 1112 / 1318 Hz). */
   check() {
-    [1071, 1112, 1318].forEach((f, i) => tone({ from: f, duration: 1.1, volume: 0.025, delay: i * 0.03, attack: 0.02, send: 0.6 }));
-    ping(3502, 0.012, 0.3, 0.1);
+    tick(0.02);
+    shimmer([1071, 1318, 2142], 1.4, 0.05, 0.02, 0.02);
   },
   grab() {
-    // Servo corto + pitido de datos
-    noise(0.06, 0.025, 2500, 4500, 0, 8, 0.1);
-    ping(4280, 0.008, 0.05);
+    // Servo corto: clic + aire que sube apenas
+    tick(0.016);
+    whoosh(0.12, 0.02, 2500, 6000, 0, 0, 0);
   },
   drop() {
-    // Encastre: golpe grave + acorde corto (345 / 535 / 960 Hz)
-    boom(0.08);
-    [345, 535, 960].forEach((f) => tone({ type: "triangle", from: f, duration: 0.22, volume: 0.02, attack: 0.004, send: 0.4 }));
+    // Encastre: golpe grave + clic + brillo corto
+    boom(0.1);
+    tick(0.02);
+    shimmer([690, 1070], 0.35, 0.025, 0.01, 0.005);
   },
   type() {
-    ping(2340 + Math.floor(Math.random() * 4) * 940, 0.005, 0.03);
+    tick(0.006 + Math.random() * 0.004, 0, Math.random() * 0.6 - 0.3);
   },
 };
