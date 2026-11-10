@@ -7,7 +7,7 @@
 const STORAGE_KEY = "portfolio-sound";
 // Ajuste global de los efectos: tono natural (más grave = más sombrío)
 const PITCH = 1;
-const VOL = 1.5;
+const VOL = 2.4;
 const hz = (f: number) => Math.min(16000, f * PITCH);
 
 let ctx: AudioContext | null = null;
@@ -51,9 +51,9 @@ function audio(): AudioContext | null {
 
     // Reverb + eco estéreo corto (ping-pong) para el aire "holográfico"
     wet = ctx.createGain();
-    wet.gain.value = 0.5;
+    wet.gain.value = 0.3;
     const verb = ctx.createConvolver();
-    verb.buffer = impulse(ctx, 3.2, 3); // cola larga, de sala grande
+    verb.buffer = impulse(ctx, 1.2, 3.5); // sala chica, como un cuarto de servidores
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
     hp.frequency.value = 140;
@@ -195,201 +195,148 @@ function noise(duration: number, volume: number, from: number, to = from, delay 
   src.start(t0);
 }
 
-// ---------- Ambiente con el núcleo encendido ----------
-// Basado en el análisis de las grabaciones de referencia:
-//  - un zumbido grave con fundamental ~37 Hz y sus armónicos (74, 111, 148, 185…)
-//  - resaltado en dos bandas, ~430 Hz y ~720 Hz (con un hueco cerca de 550 Hz)
-//  - una "ola" que crece y se apaga cada ~6,6 s
-//  - pitidos de datos sueltos entre 2 y 9 kHz
-let swellTimer = 0;
-let chatterTimer = 0;
+// ---------- Sala de servidores (núcleo encendido) ----------
+// Zumbido eléctrico de red (50 Hz + armónicos), ventiladores (ruido filtrado
+// que respira) y discos que buscan datos de vez en cuando.
+let seekTimer = 0;
 function startHum() {
   const ac = audio();
   if (!ac || hum) return;
   const gain = ac.createGain();
   gain.gain.setValueAtTime(0.0001, ac.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.035, ac.currentTime + 2.5);
+  gain.gain.exponentialRampToValueAtTime(0.06, ac.currentTime + 2.5);
   const nodes: AudioScheduledSourceNode[] = [];
-  // Fuente: diente de sierra a 37 Hz (todos los armónicos) + leve desafinado
-  const mix = ac.createGain();
-  mix.gain.value = 0.5;
-  [37, 37.15].forEach((f) => {
+  // Zumbido de transformador: 50 Hz con armónicos impares, muy filtrado
+  [50, 150, 250].forEach((f, i) => {
     const o = ac.createOscillator();
-    o.type = "sawtooth";
     o.frequency.value = f;
-    o.connect(mix);
+    const g = ac.createGain();
+    g.gain.value = [0.35, 0.18, 0.08][i];
+    o.connect(g).connect(gain);
     o.start();
     nodes.push(o);
   });
-  // Cuerpo grave (armónicos bajos) + las dos bandas resaltadas
-  const low = ac.createBiquadFilter();
-  low.type = "lowpass";
-  low.frequency.value = 320;
-  const lowG = ac.createGain();
-  lowG.gain.value = 0.7;
-  mix.connect(low).connect(lowG).connect(gain);
-  const bands = [430, 720].map((f, i) => {
-    const bp = ac.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = f;
-    bp.Q.value = 7;
-    const g = ac.createGain();
-    g.gain.value = i ? 0.9 : 1.1;
-    mix.connect(bp).connect(g).connect(gain);
-    return g;
-  });
-  // La ola: las bandas crecen y bajan cada ~6,6 s
-  const swell = () => {
-    if (!ctx || !hum) return;
-    const t = ctx.currentTime;
-    bands.forEach((g, i) => {
-      g.gain.cancelScheduledValues(t);
-      g.gain.setValueAtTime(g.gain.value, t);
-      g.gain.linearRampToValueAtTime(i ? 3.2 : 3.8, t + 0.35);
-      g.gain.exponentialRampToValueAtTime(i ? 0.9 : 1.1, t + 4);
-    });
-    swellTimer = window.setTimeout(swell, 6600);
-  };
-  // Charla de datos: clics sueltos, muy bajitos
-  const chatter = () => {
-    if (!hum) return;
-    if (Math.random() < 0.7) {
-      tick(0.006 + Math.random() * 0.006, 0, Math.random() * 1.4 - 0.7);
-    }
-    chatterTimer = window.setTimeout(chatter, 250 + Math.random() * 900);
-  };
-  out(gain, 0.12);
+  // Ventiladores: ruido en bucle por un pasa-bajos, con un leve vaivén
+  const len = ac.sampleRate * 2;
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    last = last * 0.97 + (Math.random() * 2 - 1) * 0.03; // ruido "marrón"
+    d[i] = last * 6;
+  }
+  const fan = ac.createBufferSource();
+  fan.buffer = buf;
+  fan.loop = true;
+  const lp = ac.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 900;
+  const fanG = ac.createGain();
+  fanG.gain.value = 0.9;
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 0.15;
+  const lfoG = ac.createGain();
+  lfoG.gain.value = 0.25;
+  lfo.connect(lfoG).connect(fanG.gain);
+  fan.connect(lp).connect(fanG).connect(gain);
+  fan.start();
+  lfo.start();
+  nodes.push(fan, lfo);
+  // Aspa del ventilador: un tono suave que gira
+  const blade = ac.createOscillator();
+  blade.type = "triangle";
+  blade.frequency.value = 118;
+  const bladeG = ac.createGain();
+  bladeG.gain.value = 0.05;
+  blade.connect(bladeG).connect(gain);
+  blade.start();
+  nodes.push(blade);
+  out(gain, 0.08);
   hum = { nodes, gain };
-  swellTimer = window.setTimeout(swell, 1800);
-  chatterTimer = window.setTimeout(chatter, 1200);
+  // Los discos trabajan solos cada tanto
+  const seek = () => {
+    if (!hum) return;
+    if (Math.random() < 0.6) disk(3 + Math.floor(Math.random() * 8), 0.012);
+    if (Math.random() < 0.25) compute(3 + Math.floor(Math.random() * 4), 0.008);
+    seekTimer = window.setTimeout(seek, 1200 + Math.random() * 2600);
+  };
+  seekTimer = window.setTimeout(seek, 1500);
 }
 
 function stopHum() {
-  clearTimeout(swellTimer);
-  clearTimeout(chatterTimer);
+  clearTimeout(seekTimer);
   if (!ctx || !hum) return;
   const { nodes, gain } = hum;
   hum = null;
   gain.gain.cancelScheduledValues(ctx.currentTime);
   gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
-  nodes.forEach((o) => o.stop(ctx!.currentTime + 1.3));
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.6);
+  nodes.forEach((o) => o.stop(ctx!.currentTime + 1.7));
 }
 
-/** Tono con trémolo rápido (~24 Hz): el "procesando" de las referencias. */
-function warble(freqs: number[], duration: number, volume: number, delay = 0, rate = 24) {
+/** Ráfaga corta de ruido filtrado (base de clics, relés y cabezales). */
+function burst(volume: number, freq: number, length: number, delay = 0, q = 2, pan = 0, send = 0.15) {
   const ac = audio();
   if (!ac) return;
   const t0 = ac.currentTime + delay;
-  const g = ac.createGain();
-  env(g, t0, volume * VOL, 0.04, duration);
-  const trem = ac.createGain();
-  trem.gain.value = 0.5;
-  const lfo = ac.createOscillator();
-  const depth = ac.createGain();
-  lfo.frequency.value = rate;
-  depth.gain.value = 0.5;
-  lfo.connect(depth).connect(trem.gain);
-  freqs.forEach((f) => {
-    const o = ac.createOscillator();
-    o.type = "triangle";
-    o.frequency.value = hz(f);
-    o.connect(trem);
-    o.start(t0);
-    o.stop(t0 + duration + 0.05);
-  });
-  trem.connect(g);
-  out(g, 0.45);
-  lfo.start(t0);
-  lfo.stop(t0 + duration + 0.05);
-}
-
-/** Golpe grave que cae (impacto / despliegue). */
-function boom(volume: number, delay = 0) {
-  tone({ type: "sine", from: 110, to: 30, duration: 0.9, volume, delay, attack: 0.004, send: 0.3 });
-  noise(0.4, volume * 0.4, 200, 50, delay, 0.7, 0.25);
-}
-
-/** Clic de interfaz: un transiente de ruido muy corto y agudo (sin tono). */
-function tick(volume: number, delay = 0, pan = 0) {
-  const ac = audio();
-  if (!ac) return;
-  const t0 = ac.currentTime + delay;
-  const len = Math.ceil(ac.sampleRate * 0.02);
-  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const n = Math.ceil(ac.sampleRate * length);
+  const buf = ac.createBuffer(1, n, ac.sampleRate);
   const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
-  const src = ac.createBufferSource();
-  src.buffer = buf;
-  const hp = ac.createBiquadFilter();
-  hp.type = "bandpass";
-  hp.frequency.value = 1800;
-  hp.Q.value = 1.4;
-  const g = ac.createGain();
-  g.gain.value = volume * VOL * 9;
-  src.connect(hp).connect(g);
-  out(g, 0.35, pan);
-  src.start(t0);
-}
-
-/** Ráfaga de aire que barre de un lado al otro (whoosh cinematográfico). */
-function whoosh(duration: number, volume: number, from: number, to: number, delay = 0, panFrom = -0.6, panTo = 0.6) {
-  const ac = audio();
-  if (!ac) return;
-  const t0 = ac.currentTime + delay;
-  const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * duration), ac.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 4);
   const src = ac.createBufferSource();
   src.buffer = buf;
   const bp = ac.createBiquadFilter();
   bp.type = "bandpass";
-  bp.Q.value = 2.2;
-  bp.frequency.setValueAtTime(from, t0);
-  bp.frequency.exponentialRampToValueAtTime(to, t0 + duration);
+  bp.frequency.value = hz(freq);
+  bp.Q.value = q;
   const g = ac.createGain();
-  // Crece y se va (forma de "swoosh")
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(volume * VOL, t0 + duration * 0.6);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-  const p = ac.createStereoPanner();
-  p.pan.setValueAtTime(panFrom, t0);
-  p.pan.linearRampToValueAtTime(panTo, t0 + duration);
-  src.connect(bp).connect(g).connect(p);
-  out(p, 0.5);
+  g.gain.value = volume * VOL * 8;
+  src.connect(bp).connect(g);
+  out(g, send, pan);
   src.start(t0);
 }
 
-/**
- * Pad sombrío: pares de dientes de sierra desafinados que pasan por un filtro
- * pasa-bajos que se va cerrando. Suena a "cuerda oscura" de película, nada de campanitas.
- */
-function dark(freqs: number[], duration: number, volume: number, delay = 0, attack = 0.15, cutoff = 900) {
-  const ac = audio();
-  if (!ac) return;
-  const t0 = ac.currentTime + delay;
-  const lp = ac.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.Q.value = 2;
-  lp.frequency.setValueAtTime(cutoff * 0.4, t0);
-  lp.frequency.exponentialRampToValueAtTime(cutoff, t0 + attack + 0.05);
-  lp.frequency.exponentialRampToValueAtTime(Math.max(60, cutoff * 0.15), t0 + duration);
-  const g = ac.createGain();
-  env(g, t0, volume * VOL, attack, duration);
-  freqs.forEach((f, i) => {
-    [-9, 9].forEach((cents) => {
-      const o = ac.createOscillator();
-      o.type = "sawtooth";
-      o.frequency.value = hz(f) * Math.pow(2, cents / 1200);
-      const og = ac.createGain();
-      og.gain.value = 1 / freqs.length;
-      o.connect(og).connect(lp);
-      o.start(t0 + i * 0.03);
-      o.stop(t0 + duration + 0.1);
+/** Clic de interfaz. */
+function tick(volume: number, delay = 0, pan = 0) {
+  burst(volume, 3200, 0.012, delay, 1.5, pan);
+}
+
+/** Relé que se cierra: clac metálico + golpe seco del chasis. */
+function relay(volume: number, delay = 0) {
+  burst(volume, 2400, 0.018, delay, 3);
+  burst(volume * 0.8, 1300, 0.01, delay + 0.012, 4);
+  tone({ from: 140, to: 60, duration: 0.12, volume: volume * 1.4, delay, attack: 0.002, send: 0.1 });
+}
+
+/** Disco duro buscando datos: ráfaga de clics secos e irregulares del cabezal. */
+function disk(count: number, volume: number, delay = 0) {
+  let t = delay;
+  for (let i = 0; i < count; i++) {
+    burst(volume * (0.6 + Math.random() * 0.6), 1800 + Math.random() * 2500, 0.004 + Math.random() * 0.006, t, 2.5, Math.random() * 0.4 - 0.2, 0.05);
+    t += 0.018 + Math.random() * 0.05;
+  }
+}
+
+/** "Procesando": la cascada de tonitos cortos de las computadoras de película. */
+function compute(count: number, volume: number, delay = 0, base = 900, spread = 1800) {
+  for (let i = 0; i < count; i++) {
+    tone({
+      from: base + Math.round(Math.random() * spread / 100) * 100,
+      duration: 0.035,
+      volume,
+      delay: delay + i * 0.055,
+      attack: 0.002,
+      send: 0.12,
+      pan: Math.random() * 0.6 - 0.3,
     });
-  });
-  lp.connect(g);
-  out(g, 0.6);
+  }
+}
+
+/** Motor (disco o ventilador) que acelera o frena. */
+function motor(from: number, to: number, duration: number, volume: number, delay = 0) {
+  tone({ type: "sawtooth", from, to, duration, volume, delay, attack: duration * 0.35, send: 0.1 });
+  tone({ type: "triangle", from: from * 2, to: to * 2, duration, volume: volume * 0.4, delay, attack: duration * 0.35, send: 0.1 });
+  noise(duration, volume * 0.8, from * 4, to * 4, delay, 0.8, 0.05);
 }
 
 export const sfx = {
@@ -408,56 +355,54 @@ export const sfx = {
     } else if (awake) startHum();
   },
   wake() {
-    // Encendido sombrío: el sub sube, aire grave, impacto y un acorde menor oscuro
-    tone({ from: 30, to: 110, duration: 1.2, volume: 0.12, attack: 0.7, send: 0.2 });
-    whoosh(1.1, 0.07, 150, 1800, 0);
-    boom(0.28, 1.0);
-    tick(0.02, 1.0);
-    dark([55, 82.4, 110, 130.8], 3.2, 0.16, 0.95, 0.25, 1100);
-    warble([110, 164.8], 1.4, 0.03, 1.3, 9);
+    // Encendido de computadora: relé de la fuente, discos que arrancan,
+    // los cabezales que leen y la cascada de "sistema listo"
+    relay(0.05);
+    motor(30, 240, 1.6, 0.06, 0.05);
+    relay(0.035, 0.45);
+    disk(10, 0.03, 0.7);
+    disk(8, 0.025, 1.35);
+    compute(6, 0.04, 1.2, 700, 1600);
+    tone({ from: 1000, duration: 0.18, volume: 0.04, delay: 1.65, attack: 0.004, send: 0.15 });
     startHum();
   },
   sleep() {
-    // Se apaga: acorde que se hunde, aire que baja y el sub que cae
-    dark([110, 87.3, 65.4], 1.6, 0.12, 0, 0.08, 700);
-    whoosh(1.0, 0.06, 1500, 120, 0.05, 0.6, -0.6);
-    tone({ from: 110, to: 28, duration: 1.4, volume: 0.12, delay: 0.2, send: 0.25 });
+    // Apagado: cascada que baja, relé y el disco que frena
+    compute(4, 0.03, 0, 500, 700);
+    relay(0.05, 0.25);
+    motor(240, 25, 1.6, 0.05, 0.25);
     stopHum();
   },
   hover() {
     tick(0.012);
-    dark([146.8], 0.45, 0.05, 0, 0.03, 600);
+    disk(2, 0.015, 0.02);
   },
   open() {
-    // Acceso: ráfaga grave que entra, golpe y acorde menor que queda flotando
-    whoosh(0.5, 0.06, 200, 2200, 0, -0.5, 0.5);
-    tick(0.02, 0.42);
-    boom(0.14, 0.42);
-    dark([73.4, 110, 146.8, 174.6], 2.2, 0.14, 0.4, 0.06, 1200);
+    // Acceso a datos: relé, el disco busca y el sistema "procesa"
+    relay(0.04);
+    disk(9, 0.03, 0.05);
+    compute(5, 0.035, 0.25, 900, 1800);
   },
   close() {
-    // Cierre en alerta: aire que se va, trémolo tenso y disonante que baja
-    whoosh(0.6, 0.05, 1800, 180, 0, 0.5, -0.5);
-    warble([116.5, 164.8], 0.8, 0.05, 0.05, 11);
-    dark([58.3, 87.3, 123.5], 1.2, 0.12, 0.08, 0.05, 800);
+    // Cierre en alerta: dos tonos graves de aviso y el disco guardando
+    tone({ type: "triangle", from: 520, duration: 0.12, volume: 0.05, attack: 0.004, send: 0.12 });
+    tone({ type: "triangle", from: 390, duration: 0.16, volume: 0.05, delay: 0.16, attack: 0.004, send: 0.12 });
+    disk(7, 0.025, 0.3);
   },
-  /** Chequeo del puntero amarillo: acorde grave y corto, como "confirmado". */
+  /** Chequeo del puntero amarillo: dos tonos ascendentes de "OK". */
   check() {
-    tick(0.018);
-    dark([98, 146.8, 196], 1.2, 0.11, 0.02, 0.04, 1000);
+    tick(0.015);
+    tone({ from: 880, duration: 0.07, volume: 0.04, delay: 0.02, attack: 0.003, send: 0.12 });
+    tone({ from: 1320, duration: 0.12, volume: 0.04, delay: 0.11, attack: 0.003, send: 0.12 });
   },
   grab() {
-    // Servo corto: clic + aire que sube apenas
-    tick(0.016);
-    whoosh(0.14, 0.025, 400, 1600, 0, 0, 0);
+    relay(0.02);
   },
   drop() {
-    // Encastre: golpe grave + clic + nota oscura corta
-    boom(0.16);
-    tick(0.02);
-    dark([65.4, 98], 0.5, 0.08, 0.01, 0.01, 700);
+    relay(0.035);
+    disk(3, 0.015, 0.05);
   },
   type() {
-    tick(0.006 + Math.random() * 0.004, 0, Math.random() * 0.6 - 0.3);
+    disk(1, 0.008 + Math.random() * 0.006);
   },
 };
