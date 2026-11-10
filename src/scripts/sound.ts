@@ -5,8 +5,8 @@
 // así que el contexto se crea en el primer clic.
 
 const STORAGE_KEY = "portfolio-sound";
-// Ajuste global de los efectos: algo más agudo y más presente
-const PITCH = 1.25;
+// Ajuste global de los efectos: tono natural (más grave = más sombrío)
+const PITCH = 1;
 const VOL = 1.5;
 const hz = (f: number) => Math.min(16000, f * PITCH);
 
@@ -53,10 +53,10 @@ function audio(): AudioContext | null {
     wet = ctx.createGain();
     wet.gain.value = 0.5;
     const verb = ctx.createConvolver();
-    verb.buffer = impulse(ctx, 2.6, 2.6); // cola larga, de sala grande
+    verb.buffer = impulse(ctx, 3.2, 3); // cola larga, de sala grande
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 500;
+    hp.frequency.value = 140;
     wet.connect(hp).connect(verb).connect(comp);
     const dl = ctx.createDelay(1);
     const dr = ctx.createDelay(1);
@@ -250,7 +250,7 @@ function startHum() {
     });
     swellTimer = window.setTimeout(swell, 6600);
   };
-  // Charla de datos: pitidos agudos sueltos, muy bajitos
+  // Charla de datos: clics sueltos, muy bajitos
   const chatter = () => {
     if (!hum) return;
     if (Math.random() < 0.7) {
@@ -322,10 +322,11 @@ function tick(volume: number, delay = 0, pan = 0) {
   const src = ac.createBufferSource();
   src.buffer = buf;
   const hp = ac.createBiquadFilter();
-  hp.type = "highpass";
-  hp.frequency.value = 6500;
+  hp.type = "bandpass";
+  hp.frequency.value = 1800;
+  hp.Q.value = 1.4;
   const g = ac.createGain();
-  g.gain.value = volume * VOL * 6;
+  g.gain.value = volume * VOL * 9;
   src.connect(hp).connect(g);
   out(g, 0.35, pan);
   src.start(t0);
@@ -359,21 +360,36 @@ function whoosh(duration: number, volume: number, from: number, to: number, dela
   src.start(t0);
 }
 
-/** Brillo holográfico: senos levemente desafinados (efecto coro) con cola larga. */
-function shimmer(freqs: number[], duration: number, volume: number, delay = 0, attack = 0.03) {
+/**
+ * Pad sombrío: pares de dientes de sierra desafinados que pasan por un filtro
+ * pasa-bajos que se va cerrando. Suena a "cuerda oscura" de película, nada de campanitas.
+ */
+function dark(freqs: number[], duration: number, volume: number, delay = 0, attack = 0.15, cutoff = 900) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + delay;
+  const lp = ac.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.Q.value = 2;
+  lp.frequency.setValueAtTime(cutoff * 0.4, t0);
+  lp.frequency.exponentialRampToValueAtTime(cutoff, t0 + attack + 0.05);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(60, cutoff * 0.15), t0 + duration);
+  const g = ac.createGain();
+  env(g, t0, volume * VOL, attack, duration);
   freqs.forEach((f, i) => {
-    [-6, 6].forEach((cents, k) =>
-      tone({
-        from: f * Math.pow(2, cents / 1200),
-        duration,
-        volume: volume / freqs.length,
-        delay: delay + i * 0.025,
-        attack,
-        send: 0.85,
-        pan: k ? 0.35 : -0.35,
-      }),
-    );
+    [-9, 9].forEach((cents) => {
+      const o = ac.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = hz(f) * Math.pow(2, cents / 1200);
+      const og = ac.createGain();
+      og.gain.value = 1 / freqs.length;
+      o.connect(og).connect(lp);
+      o.start(t0 + i * 0.03);
+      o.stop(t0 + duration + 0.1);
+    });
   });
+  lp.connect(g);
+  out(g, 0.6);
 }
 
 export const sfx = {
@@ -392,55 +408,54 @@ export const sfx = {
     } else if (awake) startHum();
   },
   wake() {
-    // Encendido de película: sube desde lo grave con aire, golpe y un acorde brillante
-    tone({ from: 40, to: 180, duration: 1.1, volume: 0.09, attack: 0.6, send: 0.2 });
-    whoosh(1.1, 0.07, 300, 5000, 0);
-    boom(0.2, 1.0);
-    tick(0.03, 1.0);
-    shimmer([880, 1320, 1760, 2640], 2.6, 0.08, 1.0, 0.02);
-    warble([440, 720], 1.0, 0.02, 1.4);
+    // Encendido sombrío: el sub sube, aire grave, impacto y un acorde menor oscuro
+    tone({ from: 30, to: 110, duration: 1.2, volume: 0.12, attack: 0.7, send: 0.2 });
+    whoosh(1.1, 0.07, 150, 1800, 0);
+    boom(0.28, 1.0);
+    tick(0.02, 1.0);
+    dark([55, 82.4, 110, 130.8], 3.2, 0.16, 0.95, 0.25, 1100);
+    warble([110, 164.8], 1.4, 0.03, 1.3, 9);
     startHum();
   },
   sleep() {
-    // Al revés: el brillo se apaga, el aire baja y queda un golpe sordo
-    shimmer([2640, 1760, 1320], 0.9, 0.04, 0, 0.01);
-    whoosh(1.0, 0.06, 4000, 250, 0.05, 0.6, -0.6);
-    tone({ from: 180, to: 35, duration: 1.2, volume: 0.08, delay: 0.2, send: 0.25 });
+    // Se apaga: acorde que se hunde, aire que baja y el sub que cae
+    dark([110, 87.3, 65.4], 1.6, 0.12, 0, 0.08, 700);
+    whoosh(1.0, 0.06, 1500, 120, 0.05, 0.6, -0.6);
+    tone({ from: 110, to: 28, duration: 1.4, volume: 0.12, delay: 0.2, send: 0.25 });
     stopHum();
   },
   hover() {
     tick(0.012);
-    shimmer([2350], 0.35, 0.012, 0, 0.01);
+    dark([146.8], 0.45, 0.05, 0, 0.03, 600);
   },
   open() {
-    // Acceso: ráfaga que entra, clic y acorde de cristal que queda flotando
-    whoosh(0.5, 0.06, 600, 6000, 0, -0.5, 0.5);
-    tick(0.025, 0.42);
-    boom(0.07, 0.42);
-    shimmer([1180, 1770, 2360], 1.6, 0.06, 0.42, 0.01);
-    tone({ from: 4720, duration: 0.5, volume: 0.012, delay: 0.5, fm: 300, ratio: 1.5, send: 0.9 });
+    // Acceso: ráfaga grave que entra, golpe y acorde menor que queda flotando
+    whoosh(0.5, 0.06, 200, 2200, 0, -0.5, 0.5);
+    tick(0.02, 0.42);
+    boom(0.14, 0.42);
+    dark([73.4, 110, 146.8, 174.6], 2.2, 0.14, 0.4, 0.06, 1200);
   },
   close() {
-    // Cierre en alerta: ráfaga que se va y un trémolo tenso que baja
-    whoosh(0.6, 0.05, 5000, 500, 0, 0.5, -0.5);
-    warble([466, 740], 0.6, 0.03, 0.05, 20);
-    shimmer([1480, 1110], 0.8, 0.03, 0.1, 0.01);
+    // Cierre en alerta: aire que se va, trémolo tenso y disonante que baja
+    whoosh(0.6, 0.05, 1800, 180, 0, 0.5, -0.5);
+    warble([116.5, 164.8], 0.8, 0.05, 0.05, 11);
+    dark([58.3, 87.3, 123.5], 1.2, 0.12, 0.08, 0.05, 800);
   },
-  /** Chequeo del puntero amarillo: acorde que "late" (1071 / 1112 / 1318 Hz). */
+  /** Chequeo del puntero amarillo: acorde grave y corto, como "confirmado". */
   check() {
-    tick(0.02);
-    shimmer([1071, 1318, 2142], 1.4, 0.05, 0.02, 0.02);
+    tick(0.018);
+    dark([98, 146.8, 196], 1.2, 0.11, 0.02, 0.04, 1000);
   },
   grab() {
     // Servo corto: clic + aire que sube apenas
     tick(0.016);
-    whoosh(0.12, 0.02, 2500, 6000, 0, 0, 0);
+    whoosh(0.14, 0.025, 400, 1600, 0, 0, 0);
   },
   drop() {
-    // Encastre: golpe grave + clic + brillo corto
-    boom(0.1);
+    // Encastre: golpe grave + clic + nota oscura corta
+    boom(0.16);
     tick(0.02);
-    shimmer([690, 1070], 0.35, 0.025, 0.01, 0.005);
+    dark([65.4, 98], 0.5, 0.08, 0.01, 0.01, 700);
   },
   type() {
     tick(0.006 + Math.random() * 0.004, 0, Math.random() * 0.6 - 0.3);
