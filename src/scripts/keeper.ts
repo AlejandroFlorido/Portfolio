@@ -129,7 +129,7 @@ export function createKeeper(o: KeeperOptions) {
       click(a);
       if (urgent) {
         sfx.check();
-        sfx.say("Cierre verificado. Todo en orden.");
+        sfx.say("Verificación completa. No se detectaron daños.");
       } else sfx.hover();
       checked(visit);
       a.tag.textContent = urgent ? "TODO OK ✓" : "OK ✓";
