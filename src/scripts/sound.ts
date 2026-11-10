@@ -13,6 +13,7 @@ const hz = (f: number) => Math.min(16000, f * PITCH);
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null; // entrada seca
 let wet: GainNode | null = null; // envío a reverb/eco
+let crush: WaveShaperNode | null = null; // reductor de bits: textura digital
 let enabled = true;
 
 try {
@@ -47,6 +48,17 @@ function audio(): AudioContext | null {
 
     master = ctx.createGain();
     master.connect(comp);
+
+    // Reductor de bits: escalona la onda en 24 niveles (grano digital, robótico)
+    crush = ctx.createWaveShaper();
+    const steps = 24;
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < curve.length; i++) {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      curve[i] = Math.round(x * steps) / steps;
+    }
+    crush.curve = curve;
+    crush.connect(master);
 
     // Reverb + eco estéreo corto (ping-pong) para el aire "holográfico"
     wet = ctx.createGain();
@@ -202,42 +214,122 @@ function relay(volume: number, delay = 0) {
   tone({ from: 140, to: 60, duration: 0.12, volume: volume * 1.4, delay, attack: 0.002, send: 0.1 });
 }
 
-/** Zumbido de disco que gira: un silbido electrónico que sube o baja, con leve vibrato. */
-function whir(from: number, to: number, duration: number, volume: number, delay = 0) {
+/** Salida por el reductor de bits, con algo de reverb. */
+function outDigital(node: AudioNode, send = 0.25, pan = 0) {
+  if (!ctx || !crush || !wet) return;
+  let last: AudioNode = node;
+  if (pan) {
+    const p = ctx.createStereoPanner();
+    p.pan.value = pan;
+    node.connect(p);
+    last = p;
+  }
+  last.connect(crush);
+  const sg = ctx.createGain();
+  sg.gain.value = send;
+  last.connect(sg).connect(wet);
+}
+
+/**
+ * "Computadora pensando": un zumbido de diente de sierra por un filtro muy
+ * resonante que salta a frecuencias al azar en cada paso (sample & hold).
+ */
+function think(steps: number, stepDur: number, volume: number, delay = 0, lo = 800, hi = 3500, pan = 0) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + delay;
+  const dur = steps * stepDur;
+  const o = ac.createOscillator();
+  o.type = "sawtooth";
+  o.frequency.value = hz(92);
+  const o2 = ac.createOscillator();
+  o2.type = "sawtooth";
+  o2.frequency.value = hz(92) * 1.5;
+  const bp = ac.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.Q.value = 22;
+  for (let i = 0; i < steps; i++) {
+    bp.frequency.setValueAtTime(hz(lo + Math.random() * (hi - lo)), t0 + i * stepDur);
+  }
+  // Compuerta: cada paso suena como un pulso separado
+  const gate = ac.createGain();
+  gate.gain.setValueAtTime(0, t0);
+  for (let i = 0; i < steps; i++) {
+    const t = t0 + i * stepDur;
+    gate.gain.setValueAtTime(1, t);
+    gate.gain.setValueAtTime(0.05, t + stepDur * 0.7);
+  }
+  gate.gain.setValueAtTime(0, t0 + dur);
+  const g = ac.createGain();
+  g.gain.value = volume * VOL * 6;
+  o.connect(bp);
+  o2.connect(bp);
+  bp.connect(gate).connect(g);
+  outDigital(g, 0.2, pan);
+  [o, o2].forEach((x) => {
+    x.start(t0);
+    x.stop(t0 + dur + 0.05);
+  });
+}
+
+/** Rayo de energía: FM metálica (razón inarmónica) con barrido rápido. */
+function zap(from: number, to: number, duration: number, volume: number, delay = 0, pan = 0) {
+  const ac = audio();
+  if (!ac) return;
+  const t0 = ac.currentTime + delay;
+  const car = ac.createOscillator();
+  car.frequency.setValueAtTime(hz(from), t0);
+  car.frequency.exponentialRampToValueAtTime(hz(to), t0 + duration);
+  const mod = ac.createOscillator();
+  mod.frequency.setValueAtTime(hz(from) * 3.71, t0);
+  mod.frequency.exponentialRampToValueAtTime(hz(to) * 3.71, t0 + duration);
+  const idx = ac.createGain();
+  idx.gain.setValueAtTime(hz(from) * 2.5, t0);
+  idx.gain.exponentialRampToValueAtTime(hz(to) * 0.3, t0 + duration);
+  mod.connect(idx).connect(car.frequency);
+  const g = ac.createGain();
+  env(g, t0, volume * VOL, 0.004, duration);
+  car.connect(g);
+  outDigital(g, 0.3, pan);
+  [car, mod].forEach((x) => {
+    x.start(t0);
+    x.stop(t0 + duration + 0.05);
+  });
+}
+
+/**
+ * Carga de energía (o descarga): zumbido que sube de tono, modulado en
+ * amplitud a velocidad de audio (modulación en anillo) que se acelera.
+ */
+function charge(from: number, to: number, duration: number, volume: number, delay = 0) {
   const ac = audio();
   if (!ac) return;
   const t0 = ac.currentTime + delay;
   const o = ac.createOscillator();
+  o.type = "sawtooth";
   o.frequency.setValueAtTime(hz(from), t0);
   o.frequency.exponentialRampToValueAtTime(hz(to), t0 + duration);
-  const vib = ac.createOscillator();
-  vib.frequency.value = 7;
-  const vibG = ac.createGain();
-  vibG.gain.value = hz(from) * 0.01;
-  vib.connect(vibG).connect(o.frequency);
+  const lp = ac.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.Q.value = 8;
+  lp.frequency.setValueAtTime(hz(from) * 3, t0);
+  lp.frequency.exponentialRampToValueAtTime(hz(to) * 4, t0 + duration);
+  const ring = ac.createGain();
+  ring.gain.value = 0;
+  const rm = ac.createOscillator();
+  rm.frequency.setValueAtTime(from < to ? 18 : 140, t0);
+  rm.frequency.exponentialRampToValueAtTime(from < to ? 140 : 18, t0 + duration);
+  rm.connect(ring.gain);
   const g = ac.createGain();
-  env(g, t0, volume * VOL, duration * 0.4, duration);
-  o.connect(g);
-  out(g, 0.25);
-  o.start(t0);
-  vib.start(t0);
-  o.stop(t0 + duration + 0.05);
-  vib.stop(t0 + duration + 0.05);
-}
-
-/** "Procesando": la cascada de tonitos cortos de las computadoras de película. */
-function compute(count: number, volume: number, delay = 0, base = 900, spread = 1800) {
-  for (let i = 0; i < count; i++) {
-    tone({
-      from: base + Math.round(Math.random() * spread / 100) * 100,
-      duration: 0.035,
-      volume,
-      delay: delay + i * 0.055,
-      attack: 0.002,
-      send: 0.12,
-      pan: Math.random() * 0.6 - 0.3,
-    });
-  }
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(volume * VOL, t0 + duration * (from < to ? 0.9 : 0.1));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  o.connect(lp).connect(ring).connect(g);
+  outDigital(g, 0.3);
+  [o, rm].forEach((x) => {
+    x.start(t0);
+    x.stop(t0 + duration + 0.05);
+  });
 }
 
 export const sfx = {
@@ -256,44 +348,44 @@ export const sfx = {
     } else if (awake) startHum();
   },
   wake() {
-    // Encendido de servidor: relé, el disco que toma vueltas y el flujo de datos
-    relay(0.025);
-    whir(300, 2600, 1.4, 0.035, 0.05);
-    compute(12, 0.03, 0.55, 1100, 2200);
-    tone({ from: 1500, duration: 0.25, volume: 0.035, delay: 1.25, attack: 0.004, send: 0.25 });
+    // Arranque del reactor: carga de energía, descarga y el sistema "piensa"
+    relay(0.02);
+    charge(70, 600, 1.3, 0.05);
+    zap(2600, 220, 0.35, 0.05, 1.3);
+    think(12, 0.055, 0.035, 1.4, 600, 3800);
+    zap(900, 1800, 0.12, 0.035, 2.1);
   },
   sleep() {
-    // Apagado: datos que bajan y el disco que pierde vueltas
-    compute(5, 0.025, 0, 600, 900);
-    whir(2600, 250, 1.2, 0.03, 0.2);
+    // Apagado: el sistema piensa más lento y la energía se descarga
+    think(5, 0.08, 0.03, 0, 400, 1600);
+    charge(600, 50, 1.2, 0.045, 0.3);
   },
   hover() {
-    compute(2, 0.018, 0, 1600, 1400);
+    think(2, 0.035, 0.022, 0, 1500, 3500);
   },
   open() {
-    // Acceso a datos: el disco acelera y el servidor transmite
-    whir(700, 2200, 0.45, 0.025);
-    compute(9, 0.028, 0.12, 1100, 2400);
+    // Acceso: rayo que sube y procesamiento rápido
+    zap(250, 2600, 0.2, 0.04);
+    think(9, 0.045, 0.032, 0.15, 800, 4200);
   },
   close() {
-    // Cierre en alerta: dos tonos de aviso y datos que se guardan
-    tone({ type: "triangle", from: 620, duration: 0.12, volume: 0.045, attack: 0.004, send: 0.2 });
-    tone({ type: "triangle", from: 470, duration: 0.16, volume: 0.045, delay: 0.16, attack: 0.004, send: 0.2 });
-    compute(5, 0.022, 0.35, 900, 1400);
+    // Cierre en alerta: pulsos graves alternados y descarga
+    think(4, 0.1, 0.035, 0, 450, 700);
+    zap(2000, 150, 0.4, 0.04, 0.4);
   },
-  /** Chequeo del puntero amarillo: dos tonos ascendentes de "OK". */
+  /** Chequeo del puntero amarillo: dos rayos cortos ascendentes de "OK". */
   check() {
-    tone({ from: 1000, duration: 0.07, volume: 0.04, attack: 0.003, send: 0.2 });
-    tone({ from: 1500, duration: 0.12, volume: 0.04, delay: 0.09, attack: 0.003, send: 0.2 });
+    zap(700, 1400, 0.08, 0.035);
+    zap(1100, 2200, 0.1, 0.035, 0.1);
   },
   grab() {
-    whir(900, 1600, 0.15, 0.015);
+    zap(500, 1300, 0.08, 0.02);
   },
   drop() {
-    compute(2, 0.025, 0, 1400, 600);
+    zap(1600, 350, 0.12, 0.03);
     relay(0.012, 0.02);
   },
   type() {
-    compute(1, 0.012, 0, 1400, 2200);
+    think(1, 0.03, 0.014, 0, 1500, 4500, Math.random() * 0.6 - 0.3);
   },
 };
