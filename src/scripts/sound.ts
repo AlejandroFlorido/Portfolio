@@ -5,6 +5,10 @@
 // así que el contexto se crea en el primer clic.
 
 const STORAGE_KEY = "portfolio-sound";
+// Ajuste global de los efectos: todo más agudo (×1,7 ≈ +9 semitonos) y más presente
+const PITCH = 1.7;
+const VOL = 1.5;
+const hz = (f: number) => Math.min(16000, f * PITCH);
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null; // entrada seca
@@ -39,7 +43,7 @@ function audio(): AudioContext | null {
     comp.threshold.value = -18;
     comp.ratio.value = 4;
     const out = ctx.createGain();
-    out.gain.value = 0.55;
+    out.gain.value = 0.8;
     comp.connect(out).connect(ctx.destination);
 
     master = ctx.createGain();
@@ -129,6 +133,10 @@ function tone({
   const ac = audio();
   if (!ac) return;
   const t0 = ac.currentTime + delay;
+  from = hz(from);
+  to = hz(to);
+  fm *= PITCH;
+  volume *= VOL;
   const osc = ac.createOscillator();
   const gain = ac.createGain();
   osc.type = type;
@@ -157,6 +165,9 @@ function tone({
 function noise(duration: number, volume: number, from: number, to = from, delay = 0, q = 1.2, send = 0.3) {
   const ac = audio();
   if (!ac) return;
+  from = hz(from);
+  to = hz(to);
+  volume *= VOL;
   const t0 = ac.currentTime + delay;
   const buffer = ac.createBuffer(1, Math.ceil(ac.sampleRate * duration), ac.sampleRate);
   const data = buffer.getChannelData(0);
@@ -188,7 +199,7 @@ function startHum() {
   if (!ac || hum) return;
   const gain = ac.createGain();
   gain.gain.setValueAtTime(0.0001, ac.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.05, ac.currentTime + 2.5);
+  gain.gain.exponentialRampToValueAtTime(0.035, ac.currentTime + 2.5);
   const nodes: AudioScheduledSourceNode[] = [];
   // Fuente: diente de sierra a 37 Hz (todos los armónicos) + leve desafinado
   const mix = ac.createGain();
@@ -268,7 +279,7 @@ function warble(freqs: number[], duration: number, volume: number, delay = 0, ra
   if (!ac) return;
   const t0 = ac.currentTime + delay;
   const g = ac.createGain();
-  env(g, t0, volume, 0.04, duration);
+  env(g, t0, volume * VOL, 0.04, duration);
   const trem = ac.createGain();
   trem.gain.value = 0.5;
   const lfo = ac.createOscillator();
@@ -279,7 +290,7 @@ function warble(freqs: number[], duration: number, volume: number, delay = 0, ra
   freqs.forEach((f) => {
     const o = ac.createOscillator();
     o.type = "triangle";
-    o.frequency.value = f;
+    o.frequency.value = hz(f);
     o.connect(trem);
     o.start(t0);
     o.stop(t0 + duration + 0.05);
