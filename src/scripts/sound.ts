@@ -1,5 +1,4 @@
-// Sonido "cibernético" sintetizado con Web Audio (sin archivos de audio) y una
-// voz de asistente con la síntesis de voz del navegador.
+// Sonido "cibernético" sintetizado con Web Audio (sin archivos de audio).
 // Todo pasa por una cadena común: compresor + eco corto + reverb metálica, que
 // le da ese brillo de interfaz holográfica.
 // El navegador solo permite sonar después de una interacción del usuario,
@@ -297,107 +296,6 @@ function boom(volume: number, delay = 0) {
   noise(0.35, volume * 0.5, 260, 60, delay, 0.8, 0.2);
 }
 
-// ---------- Voz del asistente ----------
-// Estilo de mayordomo digital: voz masculina grave, pausada y formal, con un
-// "canal" electrónico alrededor (clic de apertura, presencia holográfica que
-// suena mientras habla y cierre). Usa la mejor voz masculina en español que
-// tenga el dispositivo, prefiriendo español latino.
-let voice: SpeechSynthesisVoice | null = null;
-const VOICE_RANK: RegExp[] = [
-  // Voces "naturales"/neuronales masculinas (Windows/Edge, Android)
-  /(jorge|gerardo|liberto|juan|diego|tomas|tomás|alvaro|álvaro).*(natural|neural|online)/i,
-  // Voces masculinas de Apple / Windows clásicas
-  /\b(jorge|juan|diego|carlos|pablo|alvaro|álvaro|raul|raúl|enrique|eddy|reed|rocko|grandpa)\b/i,
-  /(male|hombre|masculin)/i,
-];
-function pickVoice() {
-  const all = window.speechSynthesis?.getVoices() ?? [];
-  const es = all.filter((v) => v.lang.toLowerCase().startsWith("es"));
-  const latam = (v: SpeechSynthesisVoice) => /es[-_](mx|us|419|ar|co|cl)/i.test(v.lang);
-  for (const rx of VOICE_RANK) {
-    const hits = es.filter((v) => rx.test(v.name));
-    if (hits.length) {
-      voice = hits.find(latam) ?? hits[0];
-      return;
-    }
-  }
-  voice = es.find(latam) ?? es[0] ?? null;
-}
-if (typeof window !== "undefined" && "speechSynthesis" in window) {
-  pickVoice();
-  window.speechSynthesis.addEventListener?.("voiceschanged", pickVoice);
-}
-
-// Presencia electrónica mientras habla: un colchón suave de 2 bandas con trémolo
-let presence: { stop: () => void } | null = null;
-function startPresence() {
-  const ac = audio();
-  if (!ac || presence) return;
-  const t0 = ac.currentTime;
-  const g = ac.createGain();
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(0.012, t0 + 0.25);
-  const lfo = ac.createOscillator();
-  const depth = ac.createGain();
-  lfo.frequency.value = 6;
-  depth.gain.value = 0.006;
-  lfo.connect(depth).connect(g.gain);
-  const oscs = [430, 720, 2150].map((f) => {
-    const o = ac.createOscillator();
-    o.frequency.value = f;
-    o.connect(g);
-    o.start(t0);
-    return o;
-  });
-  lfo.start(t0);
-  out(g, 0.8);
-  // Baja el zumbido del núcleo para que se entienda la voz
-  if (hum) hum.gain.gain.setTargetAtTime(0.02, t0, 0.15);
-  presence = {
-    stop() {
-      const t = ac.currentTime;
-      g.gain.cancelScheduledValues(t);
-      g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-      [...oscs, lfo].forEach((o) => o.stop(t + 0.45));
-      if (hum) hum.gain.gain.setTargetAtTime(0.05, t, 0.4);
-      presence = null;
-    },
-  };
-}
-function stopPresence() {
-  presence?.stop();
-}
-
-let lastLine = "";
-let lastAt = 0;
-function say(text: string) {
-  if (!enabled || !("speechSynthesis" in window)) return;
-  const now = performance.now();
-  if (text === lastLine && now - lastAt < 4000) return; // no repetir de más
-  lastLine = text;
-  lastAt = now;
-  const u = new SpeechSynthesisUtterance(text);
-  if (voice) u.voice = voice;
-  u.lang = voice?.lang ?? "es-MX";
-  // Grave, pausado y sereno (sin bajar tanto que suene deformado)
-  u.rate = 0.93;
-  u.pitch = 0.8;
-  u.volume = 0.9;
-  window.speechSynthesis.cancel();
-  stopPresence();
-  // Apertura de canal: clic + pitido corto descendente
-  ping(2350, 0.025, 0.06);
-  tone({ from: 1990, to: 1400, duration: 0.08, volume: 0.02, delay: 0.04, send: 0.6 });
-  u.onstart = () => startPresence();
-  u.onend = u.onerror = () => {
-    stopPresence();
-    // Cierre de canal
-    ping(3185, 0.012, 0.05);
-  };
-  window.speechSynthesis.speak(u);
-}
-
 export const sfx = {
   get enabled() {
     return enabled;
@@ -411,12 +309,8 @@ export const sfx = {
     }
     if (!value) {
       stopHum();
-      stopPresence();
-      window.speechSynthesis?.cancel();
     } else if (awake) startHum();
   },
-  /** Una frase del asistente. */
-  say,
   wake() {
     // Barrido que sube desde lo grave (como en la referencia), golpe y tono de ~1 kHz
     tone({ type: "sawtooth", from: 50, to: 620, duration: 1.0, volume: 0.06, attack: 0.4, send: 0.25 });
@@ -428,7 +322,6 @@ export const sfx = {
     );
     warble([440, 720], 1.2, 0.035, 1.35);
     startHum();
-    window.setTimeout(() => say("Bienvenido, señor. Todos los sistemas en línea."), 1500);
   },
   sleep() {
     // Lo mismo al revés: el tono se apaga y el barrido baja
@@ -436,7 +329,6 @@ export const sfx = {
     tone({ type: "sawtooth", from: 620, to: 45, duration: 1.2, volume: 0.06, delay: 0.2, send: 0.25 });
     noise(1.0, 0.035, 2600, 120, 0.2, 5);
     stopHum();
-    say("Entrando en modo de reposo. Estaré aquí si me necesita.");
   },
   hover() {
     ping(2350, 0.02, 0.08);
@@ -451,10 +343,6 @@ export const sfx = {
     tone({ type: "triangle", from: 700, duration: 0.24, volume: 0.04, delay: 0.32, send: 0.4 });
     ping(3185, 0.015, 0.1, 0.45, -0.4);
     ping(8135, 0.008, 0.08, 0.5, 0.5);
-  },
-  /** El asistente nombra la sección que se abre. */
-  section(name: string) {
-    say(`Abriendo ${name.toLowerCase()}, señor.`);
   },
   close() {
     // Alerta: dos bandas con trémolo, más tensas

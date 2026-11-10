@@ -436,7 +436,6 @@ const base = import.meta.env.BASE_URL;
       const tpl = document.querySelector<HTMLTemplateElement>(`template[data-content="${id}"]`);
       if (!node || !tpl || closing) return;
       sfx.open();
-      sfx.section(node.label);
       firePacket(index);
       nodeButtons.forEach((b) => b.classList.toggle("is-active", b.dataset.node === id));
       links.forEach((l) => l.classList.toggle("is-active", l.dataset.link === id));
