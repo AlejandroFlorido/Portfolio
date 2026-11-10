@@ -170,9 +170,6 @@ function tone({
   osc.stop(t0 + duration + 0.05);
 }
 
-// Sin ambiente de fondo: Ale lo encontró molesto. Solo suenan las acciones.
-function startHum() {}
-function stopHum() {}
 
 // ---------- Paleta sacada de la referencia "Digital HUD Sounds" ----------
 // Análisis de la grabación:
@@ -299,6 +296,93 @@ function thump(volume: number, delay = 0) {
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const side = () => Math.random() * 1.2 - 0.6;
 
+// ---------- Fondo con el núcleo encendido (como en la referencia) ----------
+// El colchón de cómputo 311/415/622/830 Hz titilando sin parar, muy bajito,
+// un leve rumor grave y, cada tanto, alguna ráfaga o barrido suelto.
+let hum: { nodes: AudioScheduledSourceNode[]; gain: GainNode; flicks: GainNode[] } | null = null;
+let flickTimer = 0;
+let eventTimer = 0;
+
+function startHum() {
+  const ac = audio();
+  if (!ac || hum) return;
+  const gain = ac.createGain();
+  gain.gain.setValueAtTime(0.0001, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.012 * VOL, ac.currentTime + 3);
+  const nodes: AudioScheduledSourceNode[] = [];
+  const flicks = BED.map((f, i) => {
+    const o = ac.createOscillator();
+    o.frequency.value = hz(f);
+    const flick = ac.createGain();
+    flick.gain.value = 0.3;
+    const lvl = ac.createGain();
+    lvl.gain.value = [1, 0.9, 0.55, 0.3][i];
+    o.connect(flick).connect(lvl).connect(gain);
+    o.start();
+    nodes.push(o);
+    return flick;
+  });
+  // Rumor grave: ruido marrón muy filtrado
+  const len = ac.sampleRate * 2;
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    last = last * 0.98 + (Math.random() * 2 - 1) * 0.02;
+    d[i] = last * 5;
+  }
+  const rumble = ac.createBufferSource();
+  rumble.buffer = buf;
+  rumble.loop = true;
+  const lp = ac.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 180;
+  const rg = ac.createGain();
+  rg.gain.value = 0.5;
+  rumble.connect(lp).connect(rg).connect(gain);
+  rumble.start();
+  nodes.push(rumble);
+  out(gain, 0.25);
+  hum = { nodes, gain, flicks };
+
+  // Titileo: cada tono cambia de volumen al azar, programado de a 1 s
+  const flicker = () => {
+    if (!ctx || !hum) return;
+    const t0 = ctx.currentTime;
+    hum.flicks.forEach((g) => {
+      for (let t = 0; t < 1.05; t += 0.06 + Math.random() * 0.12) {
+        g.gain.setTargetAtTime(Math.random() < 0.3 ? 0.06 : 0.4 + Math.random() * 0.6, t0 + t, 0.025);
+      }
+    });
+    flickTimer = window.setTimeout(flicker, 1000);
+  };
+  flicker();
+
+  // Datos sueltos de vez en cuando, bajitos
+  const events = () => {
+    if (!hum) return;
+    const r = Math.random();
+    if (r < 0.45) stutter(pick([6834, 4571, 12868, 2900]), 3 + Math.floor(Math.random() * 4), 0.006, 0, 40, side());
+    else if (r < 0.75) zip(9000 + Math.random() * 4000, 2500 + Math.random() * 2500, 0.5, 0.004, 0, side());
+    else dash(pick(DASH), 0.06, 0.004, 0, side());
+    eventTimer = window.setTimeout(events, 900 + Math.random() * 2200);
+  };
+  eventTimer = window.setTimeout(events, 1500);
+}
+
+function stopHum() {
+  clearTimeout(flickTimer);
+  clearTimeout(eventTimer);
+  if (!ctx || !hum) return;
+  const { nodes, gain } = hum;
+  hum = null;
+  const t = ctx.currentTime;
+  gain.gain.cancelScheduledValues(t);
+  gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), t);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+  nodes.forEach((o) => o.stop(t + 1.3));
+}
+
 export const sfx = {
   get enabled() {
     return enabled;
@@ -325,6 +409,7 @@ export const sfx = {
     stutter(4571, 7, 0.022, 1.05, 40, -0.2);
     dash(3820, 0.09, 0.014, 1.4, 0.3);
     stutter(6834, 4, 0.02, 1.6, 38);
+    startHum();
   },
   sleep() {
     // Apagado: estática, barridos que caen y el colchón que se va
@@ -333,6 +418,7 @@ export const sfx = {
     zip(12000, 2000, 0.7, 0.012, 0.1, 0.4);
     zip(9000, 1500, 0.8, 0.01, 0.3, -0.4);
     thump(0.08, 0.6);
+    stopHum();
   },
   hover() {
     stutter(6834, 3, 0.014, 0, 40, side());
