@@ -58,10 +58,11 @@ export const nodes: NodeSection[] = [
     code: "DOC-05",
     html: `
       <p>Elegí el formato de mi currículum:</p>
-      <ul class="panel__list">
-        <li><span>CV con diseño · con foto, para leer o imprimir</span><a href="cv-alejandro-florido.pdf" target="_blank" rel="noopener">abrir ↗</a></li>
-        <li><span>CV para ATS · texto simple, para postulaciones online</span><a href="cv-alejandro-florido-ats.pdf" target="_blank" rel="noopener">abrir ↗</a></li>
-      </ul>
+      <div class="panel__buttons">
+        <a class="panel__button" href="cv-alejandro-florido.pdf" target="_blank" rel="noopener">CV con diseño ↗</a>
+        <a class="panel__button" href="cv-alejandro-florido-ats.pdf" target="_blank" rel="noopener">CV para ATS ↗</a>
+      </div>
+      <p class="panel__note">Con diseño: con foto, para leer o imprimir.<br>ATS: texto simple, para postulaciones online.</p>
     `,
   },
 ];

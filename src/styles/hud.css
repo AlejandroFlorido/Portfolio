@@ -447,6 +447,15 @@ body.has-panel .panel {
   font-size: 0.8rem;
 }
 .panel__button:hover { background: var(--cyan-faint); }
+.panel__buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.panel__buttons .panel__button { width: min(100%, 16rem); text-align: center; }
+.panel__note { font-size: 0.8rem; color: var(--muted); text-align: center; }
 .panel__body > * {
   animation: reveal 0.5s ease both;
 }
