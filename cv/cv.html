@@ -36,12 +36,13 @@
   .item:last-child { margin-bottom: 0; }
   .item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 3mm; }
   .item-head h3 { font-size: 9.8pt; font-weight: 700; }
+  .item-head .org { margin-bottom: .8mm; }
   .item-head .date { font-size: 8.2pt; color: var(--muted); white-space: nowrap; font-weight: 500; }
   .org { font-size: 8.6pt; color: var(--muted); margin-bottom: .8mm; }
   .stack { font-size: 8pt; color: var(--accent); font-weight: 600; margin-bottom: .8mm; }
-  ul.bullets { padding-left: 4mm; }
-  ul.bullets li { margin-bottom: .6mm; }
-  ul.bullets li::marker { color: var(--accent); }
+  ul.bullets { list-style: none; padding-left: 0; }
+  ul.bullets li { margin-bottom: .6mm; padding-left: 4mm; text-indent: -4mm; }
+  ul.bullets li .dot { color: var(--accent); }
   .profile p { text-align: justify; }
 </style>
 </head>
@@ -57,56 +58,59 @@
   </header>
 
   <section class="profile">
-    <h2>Perfil profesional</h2>
-    <p>Estudiante de la Tecnicatura Universitaria en Programación en la UTN, con experiencia en desarrollo web frontend y en aplicaciones de escritorio en Python que automatizan procesos y reportes. Integro la inteligencia artificial en mi flujo de trabajo para prototipar y depurar con rapidez. Autodidacta, con buena comunicación y capacidad para trabajar en equipo o de forma autónoma.</p>
+    <h2>Resumen profesional</h2>
+    <p>Desarrollador web frontend y de aplicaciones de escritorio en Python, estudiante avanzado de la Tecnicatura Universitaria en Programación (UTN, 85% aprobado). Experiencia en automatización de procesos, auditoría, compras y soporte IT, con JavaScript, TypeScript, CSS, Astro, Python e inteligencia artificial.</p>
   </section>
 
   <section>
     <h2>Experiencia laboral</h2>
     <div class="item">
-      <div class="item-head"><h3>Grupo Ginesta</h3><span class="date">Junio 2024 – Actualidad</span></div>
-      <p class="org">Auditor general · Encargado y asistente de compras · Asistente de sistemas y redes</p>
+      <div class="item-head"><h3>Auditor General, Encargado de Compras y Asistente de Sistemas y Redes</h3></div>
+      <div class="item-head"><p class="org">Grupo Ginesta · Resistencia, Chaco</p><span class="date">Junio 2024 – Actualidad</span></div>
       <ul class="bullets">
-        <li>Auditoría general de la operación: control de registros, asistencia y horas del personal, detección de inconsistencias e informes para la dirección.</li>
-        <li>Automaticé el control de horas del personal con una app propia en Python, reduciendo la tarea de <b>24 h a un máximo de 2 h semanales (−90%)</b>.</li>
-        <li>Gestión de compras con <b>más de 30 proveedores</b> de distintos rubros (carnes, granel, bebidas, lácteos, fiambrería, limpieza): cotizaciones, comparación de precios, seguimiento de órdenes y control de stock.</li>
-        <li>Soporte de sistemas y redes: mantenimiento de equipos y conectividad, asistencia a usuarios y herramientas internas en Python.</li>
+        <li><span class="dot">•</span> Desarrollé una aplicación de escritorio en Python que automatiza el control de horas del personal, reduciendo la tarea de <b>24 a un máximo de 2 horas semanales (−90%)</b>.</li>
+        <li><span class="dot">•</span> Gestiono las compras con <b>más de 30 proveedores de 6 rubros</b>: carnes, granel, bebidas, lácteos, fiambrería y limpieza.</li>
+        <li><span class="dot">•</span> Solicito y comparo cotizaciones, negocio precios, emito órdenes de compra y controlo el stock.</li>
+        <li><span class="dot">•</span> Audito registros, asistencia y horas del personal, detecto inconsistencias y elaboro informes para la dirección.</li>
+        <li><span class="dot">•</span> Mantengo los equipos y la red de la empresa, brindo soporte técnico y automatizo reportes en Excel con Python.</li>
       </ul>
     </div>
     <div class="item">
-      <div class="item-head"><h3>Gestión de activos digitales (independiente)</h3><span class="date">2021 – 2022</span></div>
-      <p>Compra y venta de activos digitales (NFT) en Axie Infinity con análisis de mercado.</p>
+      <div class="item-head"><h3>Trader de Activos Digitales (Independiente)</h3><span class="date">Dic. 2021 – Nov. 2022</span></div>
+      <ul class="bullets">
+        <li><span class="dot">•</span> Compré y vendí activos digitales (NFT) en Axie Infinity, con análisis de mercado y seguimiento de precios.</li>
+      </ul>
     </div>
   </section>
 
   <section>
     <h2>Proyectos</h2>
     <div class="item">
-      <div class="item-head"><h3>Portfolio interactivo</h3><span class="date">2026</span></div>
-      <p class="stack">Astro · TypeScript · JavaScript · CSS · Three.js · Web Audio API · GitHub Actions</p>
+      <div class="item-head"><h3>Procesador de fichadas de asistencia</h3><span class="date">App de escritorio</span></div>
+      <p class="stack">Python · Tkinter · pandas · openpyxl</p>
       <ul class="bullets">
-        <li>Interfaz estilo asistente de IA con escena 3D, animaciones y sonido generado por código; desarrollado con apoyo de IA y desplegado con GitHub Actions.</li>
+        <li><span class="dot">•</span> Implementé un algoritmo de programación dinámica que empareja entradas y salidas del reloj y detecta marcas faltantes, repetidas y turnos anómalos.</li>
+        <li><span class="dot">•</span> Genera un Excel con alertas por colores y resumen de horas por empleado, usado semanalmente en Grupo Ginesta.</li>
       </ul>
     </div>
     <div class="item">
-      <div class="item-head"><h3>Procesador de fichadas de asistencia </h3><span class="date">App de escritorio</span></div>
-      <p class="stack">Python · Tkinter · pandas · openpyxl · tkinterdnd2</p>
+      <div class="item-head"><h3>Portfolio web interactivo</h3><span class="date">2026</span></div>
+      <p class="stack">Astro · TypeScript · JavaScript · CSS · Three.js · GitHub Actions</p>
       <ul class="bullets">
-        <li>Procesa los registros del reloj (Excel/CSV) y, con un algoritmo de programación dinámica, empareja entradas y salidas y detecta marcas faltantes, repetidas y turnos anómalos.</li>
-        <li>Exporta un Excel con alertas por colores y resumen por empleado; redujo el control semanal de 24 h a 2 h.</li>
+        <li><span class="dot">•</span> Diseñé y desarrollé un sitio con escena 3D, animaciones y sonido generado por código, con despliegue continuo en GitHub Pages.</li>
       </ul>
     </div>
   </section>
 
   <section>
-    <h2>Formación académica</h2>
+    <h2>Educación</h2>
     <div class="item">
       <div class="item-head"><h3>Tecnicatura Universitaria en Programación</h3><span class="date">2025 – 2027</span></div>
-      <p class="org">Universidad Tecnológica Nacional · Facultad Regional Resistencia · 85% de la carrera aprobada</p>
+      <p class="org">Universidad Tecnológica Nacional · Facultad Regional Resistencia · 85% aprobado</p>
     </div>
     <div class="item">
       <div class="item-head"><h3>Ingeniería en Sistemas de Información</h3><span class="date">2018 – 2024</span></div>
-      <p class="org">Universidad Tecnológica Nacional · Facultad Regional Resistencia · Cursado hasta 4.º año (60% de la carrera aprobada)</p>
+      <p class="org">Universidad Tecnológica Nacional · Facultad Regional Resistencia · Hasta 4.º año (60% aprobado)</p>
     </div>
     <div class="item">
       <div class="item-head"><h3>Curso de Desarrollo Web y Bases de Datos</h3><span class="date">2021 · 3 meses</span></div>
