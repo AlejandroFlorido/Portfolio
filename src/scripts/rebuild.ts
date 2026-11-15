@@ -55,6 +55,10 @@ export function createRebuilder(o: RebuilderOptions) {
   }
   const builders = Array.from({ length: BUILDERS }, (_, i) => makeBot(SHADES[i % SHADES.length]));
   const patrol = Array.from({ length: PATROL }, () => makeBot("#d4faff"));
+  // El puntero amarillo también viene a la página: tranquilo, revisa todo y el pie
+  const keeper = makeBot("#ffd84a");
+  keeper.el.classList.add("agent--keeper");
+  const foot = o.page.querySelector<HTMLElement>(".rb-foot");
 
   const render = (b: Bot) => (b.el.style.transform = `translate3d(${b.pos.x}px, ${b.pos.y}px, 0)`);
   function show(b: Bot, at: Pt, tag = "") {
@@ -268,8 +272,10 @@ export function createRebuilder(o: RebuilderOptions) {
 
   // ---------- Punteros que patrullan la página terminada ----------
   async function patrolLoop(b: Bot, i: number, g: number) {
+    const calm = b === keeper;
+    const label = calm ? "REVISIÓN" : "CONTROL";
     const v = view();
-    show(b, { x: v.w * (0.2 + i * 0.3), y: v.top + v.h * 0.85 }, "CONTROL");
+    show(b, { x: calm ? v.w * 0.8 : v.w * (0.2 + i * 0.3), y: v.top + v.h * (calm ? 1 : 0.85) }, label);
     await wait(400 + i * 700, g);
     while (g === gen) {
       const v2 = view();
@@ -280,15 +286,20 @@ export function createRebuilder(o: RebuilderOptions) {
       });
       let target: Pt;
       let pick: HTMLElement | null = null;
-      if (visible.length) {
+      // El amarillo, si el pie está a la vista, a veces va a revisar el copyright
+      if (calm && foot?.classList.contains("is-built") && visible.includes(foot) && Math.random() < 0.5) {
+        pick = foot;
+        const r = rel(foot);
+        target = { x: r.x + r.w * 0.5, y: r.y + r.h * 0.5 };
+      } else if (visible.length) {
         pick = visible[Math.floor(Math.random() * visible.length)];
         const r = rel(pick);
         target = { x: r.x + r.w * (0.15 + Math.random() * 0.7), y: r.y + r.h * (0.2 + Math.random() * 0.6) };
       } else {
         target = { x: v2.w * (0.1 + Math.random() * 0.8), y: v2.top + v2.h * (0.2 + Math.random() * 0.7) };
       }
-      tagOf(b, "CONTROL");
-      if (!(await move(b, target, 1700 + Math.random() * 1400, g))) return;
+      tagOf(b, pick === foot && calm ? "COPYRIGHT" : label);
+      if (!(await move(b, target, (calm ? 2600 : 1700) + Math.random() * 1400, g))) return;
       // A veces revisa el bloque: lo enmarca un momento y da el OK
       if (pick && Math.random() < 0.35) {
         const r = rel(pick);
@@ -333,7 +344,7 @@ export function createRebuilder(o: RebuilderOptions) {
     });
     extras.forEach((el) => el.remove());
     extras.clear();
-    [...builders, ...patrol].forEach(hide);
+    [...builders, ...patrol, keeper].forEach(hide);
     o.back.classList.remove("is-ready");
     o.root.scrollTop = 0;
   }
@@ -354,7 +365,7 @@ export function createRebuilder(o: RebuilderOptions) {
       sfx.check();
       o.back.classList.add("is-ready");
       watch(g);
-      patrol.forEach((b, i) => patrolLoop(b, i, g));
+      [...patrol, keeper].forEach((b, i) => patrolLoop(b, i, g));
     },
 
     /** Desarma lo que se ve en pantalla (rápido) y deja todo listo para la próxima. */
@@ -362,7 +373,7 @@ export function createRebuilder(o: RebuilderOptions) {
       const g = ++gen;
       observer?.disconnect();
       o.back.classList.remove("is-ready");
-      patrol.forEach((b) => tagOf(b, ""));
+      [...patrol, keeper].forEach((b) => tagOf(b, ""));
       const v = view();
       const visible = all
         .filter((el) => el.classList.contains("is-built") || el.classList.contains("is-typing"))
