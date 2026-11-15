@@ -541,16 +541,16 @@ const base = import.meta.env.BASE_URL;
       // 1. Los nodos se desarman como al apagar el núcleo
       await sleep();
       closer.leave();
-      // 2. Se va el fondo: queda el núcleo solo en la oscuridad
-      body.classList.add("is-dark");
+      // 2. Los punteros se van de la pantalla y el fondo se apaga de a poco
+      body.classList.add("is-leaving", "is-dark");
       setStatus("cortando energía…");
-      await pause(1000);
-      // 3. El núcleo parpadea como un tubo que falla y se apaga
+      await pause(1100);
+      // 3. Mientras todo se oscurece, el núcleo parpadea como un tubo que falla y se apaga
       swapClass("core-dying");
       sfx.close();
       await pause(700);
       sfx.sleep();
-      await pause(900);
+      await pause(1000);
       // 4. Oscuridad total un instante, vuelve el fondo y se arma la página
       body.classList.add("is-rebuild");
       body.classList.remove("core-dying");
@@ -592,9 +592,9 @@ const base = import.meta.env.BASE_URL;
       body.classList.add("is-switching");
       // 1. Los punteros borran la página
       await rebuilder.unbuild();
-      // 2. Se va el fondo y todo queda a oscuras
+      // 2. El fondo se apaga de a poco y todo queda a oscuras
       body.classList.add("is-dark", "core-off");
-      await pause(1000);
+      await pause(2600);
       body.classList.remove("is-rebuild");
       await pause(500);
       // 3. El núcleo se enciende de nuevo en la oscuridad, parpadeando
@@ -604,12 +604,13 @@ const base = import.meta.env.BASE_URL;
       await pause(650);
       sfx.hover();
       await pause(900);
-      // 4. Vuelve el fondo y los punteros entran a la pantalla
+      // 4. Vuelve el fondo de a poco y los punteros entran a la pantalla
+      body.classList.remove("is-leaving");
       body.classList.add("is-reentering");
       body.classList.remove("is-dark");
       topo.setIntensity(0.35);
       topo.pulse(innerWidth / 2, innerHeight / 2, 0.8);
-      await pause(1300);
+      await pause(2000);
       body.classList.remove("core-igniting", "is-reentering", "is-switching");
       rebuilding = false;
       // 5. Se arma la interfaz de nodos como siempre
