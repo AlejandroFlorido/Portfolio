@@ -11,7 +11,7 @@ const ARROW = `<svg viewBox="0 0 16 18" aria-hidden="true"><path d="M1.5 1.5 4 1
 const SHADES = ["#50dcff", "#a6f4ff", "#2eb6e0", "#d4faff", "#74d4f2"];
 const BUILDERS = 10;
 const PATROL = 3;
-const FOLLOWERS = 3;
+const FOLLOWERS = 8;
 const CHAOS = 1.2;
 
 interface Bot {
@@ -353,7 +353,7 @@ export function createRebuilder(o: RebuilderOptions) {
   });
   function followLoop(g: number) {
     const v = view();
-    followers.forEach((b, i) => show(b, { x: -30 - i * 30, y: v.top + v.h * (0.3 + i * 0.15) }, "SIGUIENDO"));
+    followers.forEach((b, i) => show(b, { x: -30 - i * 30, y: v.top + v.h * (0.25 + (i % 5) * 0.12) }, "SIGUIENDO"));
     let last = performance.now();
     const step = (now: number) => {
       if (g !== gen) return;
