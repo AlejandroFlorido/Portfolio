@@ -49,7 +49,7 @@ const POSITIONS: [number, number, number][] = [
   [3.4, -3.3, 2.0], // Habilidades: abajo a la derecha, adelante
   [-4.2, -2.6, -2.8], // Contacto: abajo a la izquierda, al fondo
   [-5.4, 2.0, 0.8], // CV: izquierda
-  [5.2, 4.4, -3.0], // Reconstruir: arriba a la derecha, al fondo
+  [-3.0, -0.7, 4.0], // Reconstruir: adelante a la izquierda, a media altura
 ];
 const CORE_R = 1.15;
 const NODE_R = 0.46;
@@ -107,8 +107,68 @@ export function createWorld(o: WorldOptions) {
   const driftQ = new THREE.Quaternion();
   let drift = 0;
   let driftSpeed = 0;
-  const spheres = o.nodes.map((_, i) => {
+  // Nodo especial "Reconstruir": en vez de esfera es un icosaedro de placas que se
+  // separan y se vuelven a juntar todo el tiempo, con anillos de obra cortados
+  const SHARD_EMI = new THREE.Color(0xd4faff);
+  function shardGeometry() {
+    const geo = new THREE.IcosahedronGeometry(NODE_R * 1.05, 0).toNonIndexed();
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    const base = Float32Array.from(pos.array as Float32Array);
+    const dirs: THREE.Vector3[] = [];
+    for (let f = 0; f < pos.count / 3; f++) {
+      const c = new THREE.Vector3();
+      for (let k = 0; k < 3; k++) c.add(new THREE.Vector3().fromBufferAttribute(pos, f * 3 + k));
+      dirs.push(c.normalize());
+    }
+    geo.computeVertexNormals();
+    return { geo, base, dirs };
+  }
+  function brokenRing(r: number, pieces: number, fill: number, opacity: number) {
+    const pts: THREE.Vector3[] = [];
+    for (let k = 0; k < pieces; k++) {
+      const a0 = (k / pieces) * Math.PI * 2;
+      const a1 = a0 + ((Math.PI * 2) / pieces) * fill;
+      for (let j = 0; j < 4; j++) {
+        const a = a0 + ((a1 - a0) * j) / 4;
+        const b = a0 + ((a1 - a0) * (j + 1)) / 4;
+        pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0), new THREE.Vector3(Math.cos(b) * r, Math.sin(b) * r, 0));
+      }
+    }
+    return new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color: 0xd4faff, transparent: true, opacity }),
+    );
+  }
+
+  const spheres = o.nodes.map((btn, i) => {
     const g = new THREE.Group();
+    const special = btn.classList.contains("node--rebuild");
+    if (special) {
+      const sh = shardGeometry();
+      const mesh = new THREE.Mesh(
+        sh.geo,
+        new THREE.MeshStandardMaterial({
+          color: 0x0b3646,
+          emissive: SHARD_EMI,
+          emissiveIntensity: 0.18,
+          metalness: 0.5,
+          roughness: 0.25,
+          flatShading: true,
+          side: THREE.DoubleSide,
+        }),
+      );
+      // Las mismas placas en alambre, apenas más grandes
+      const wire = new THREE.Mesh(sh.geo, new THREE.MeshBasicMaterial({ color: 0xd4faff, wireframe: true, transparent: true, opacity: 0.55 }));
+      wire.scale.setScalar(1.06);
+      const ring = brokenRing(NODE_R * 1.7, 14, 0.55, 0.7);
+      ring.rotation.x = Math.PI / 2.2;
+      const ring2 = brokenRing(NODE_R * 1.95, 6, 0.3, 0.45);
+      ring2.rotation.y = Math.PI / 2.4;
+      g.add(mesh, wire, ring, ring2);
+      g.visible = false;
+      scene.add(g);
+      return { g, mesh, wire, ring, ring2, shards: sh, emi: SHARD_EMI };
+    }
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(NODE_R, 40, 28),
       new THREE.MeshStandardMaterial({
@@ -128,7 +188,7 @@ export function createWorld(o: WorldOptions) {
     g.add(mesh, wire, ring);
     g.visible = false;
     scene.add(g);
-    return { g, mesh, wire, ring };
+    return { g, mesh, wire, ring, ring2: null as THREE.Object3D | null, shards: null as ReturnType<typeof shardGeometry> | null, emi: null as THREE.Color | null };
   });
   // Línea 3D del núcleo a cada nodo (acompaña a la línea HTML punteada)
   const beams = o.nodes.map(() => {
@@ -485,7 +545,27 @@ export function createWorld(o: WorldOptions) {
       const hot = btn.classList.contains("is-active") || btn.matches(":hover");
       const mm = s.mesh.material as THREE.MeshStandardMaterial;
       mm.emissiveIntensity = 0.1 + built * (hot ? 0.55 : 0.18);
-      mm.emissive.copy(NODE_EMI).lerp(NODE_RED, i === insideNode ? tint : 0);
+      mm.emissive.copy(s.emi ?? NODE_EMI).lerp(NODE_RED, i === insideNode ? tint : 0);
+      if (s.shards) {
+        // Las placas se abren y se cierran, cada una con su propio ritmo
+        const pos = s.mesh.geometry.attributes.position as THREE.BufferAttribute;
+        const arr = pos.array as Float32Array;
+        const { base, dirs } = s.shards;
+        const open = hot ? 1.6 : 1;
+        for (let f = 0; f < dirs.length; f++) {
+          const w = Math.sin(t * 1.7 + f * 0.9);
+          const off = Math.pow(Math.max(0, w), 3) * NODE_R * 0.32 * open;
+          const d = dirs[f];
+          for (let k = 0; k < 3; k++) {
+            const v = (f * 3 + k) * 3;
+            arr[v] = base[v] + d.x * off;
+            arr[v + 1] = base[v + 1] + d.y * off;
+            arr[v + 2] = base[v + 2] + d.z * off;
+          }
+        }
+        pos.needsUpdate = true;
+        if (s.ring2) s.ring2.rotation.x += dt * -1.1;
+      }
       s.wire.rotation.y += dt * (hot ? 1.6 : 0.5);
       s.mesh.rotation.y += dt * 0.4;
       s.g.rotation.x = Math.sin(t * 0.4 + i) * 0.25;

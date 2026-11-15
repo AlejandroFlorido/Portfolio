@@ -61,7 +61,7 @@ const base = import.meta.env.BASE_URL;
     <nav aria-label="Secciones">
       {
         nodes.map((node, i) => (
-          <button class="node" type="button" data-node={node.id} style={`--delay: ${0.15 + i * 0.09}s`}>
+          <button class={`node${node.action ? " node--rebuild" : ""}`} type="button" data-node={node.id} style={`--delay: ${0.15 + i * 0.09}s`}>
             <span class="node__dot">
               <span class="globe" aria-hidden="true">
                 <span class="globe__spin"><i /><i /><i /><i /><i /></span>
@@ -519,7 +519,6 @@ const base = import.meta.env.BASE_URL;
     }
 
     // ---------- Nodo "Reconstruir": apagón y página CV armada por punteros ----------
-    const blackout = document.querySelector<HTMLElement>("[data-blackout]")!;
     const rbRoot = document.querySelector<HTMLElement>("[data-rb]")!;
     const rbBack = document.querySelector<HTMLButtonElement>("[data-rb-back]")!;
     const rebuilder = createRebuilder({
@@ -528,47 +527,92 @@ const base = import.meta.env.BASE_URL;
       back: rbBack,
     });
     const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    // Se apagan las luces como un tubo que falla: parpadea y queda a oscuras
-    async function lightsOut() {
-      body.classList.add("is-switching");
-      for (const [o, ms] of [[0.85, 70], [0.2, 90], [1, 60], [0.45, 80], [1, 0]] as const) {
-        blackout.style.transition = "none";
-        blackout.style.opacity = String(o);
-        await pause(ms);
-      }
-      await pause(550);
-    }
-    // Vuelve la luz: aparece el fondo de a poco
-    async function lightsOn() {
-      blackout.style.transition = "opacity 0.9s ease";
-      blackout.style.opacity = "0";
-      topo.pulse(innerWidth / 2, innerHeight / 2, 1);
-      await pause(700);
-      body.classList.remove("is-switching");
+    function swapClass(add: string, ...remove: string[]) {
+      body.classList.remove(...remove);
+      void body.offsetWidth; // reinicia la animación
+      body.classList.add(add);
     }
 
     let rebuilding = false;
     async function rebuild() {
       if (rebuilding || closing || !body.classList.contains("is-awake") || body.classList.contains("is-building")) return;
       rebuilding = true;
-      // Los nodos se desarman como al apagar el núcleo
+      body.classList.add("is-switching");
+      // 1. Los nodos se desarman como al apagar el núcleo
       await sleep();
       closer.leave();
+      // 2. Se va el fondo: queda el núcleo solo en la oscuridad
+      body.classList.add("is-dark");
+      setStatus("cortando energía…");
+      await pause(1000);
+      // 3. El núcleo parpadea como un tubo que falla y se apaga
+      swapClass("core-dying");
+      sfx.close();
+      await pause(700);
       sfx.sleep();
-      await lightsOut();
+      await pause(900);
+      // 4. Oscuridad total un instante, vuelve el fondo y se arma la página
       body.classList.add("is-rebuild");
+      body.classList.remove("core-dying");
+      await pause(450);
+      body.classList.remove("is-dark");
       topo.setIntensity(0.55);
-      await lightsOn();
+      topo.pulse(innerWidth / 2, innerHeight / 2, 1);
+      await pause(700);
+      body.classList.remove("is-switching");
       await rebuilder.build();
+    }
+
+    // El nombre del nodo especial se "reconstruye" cada tanto: letras al azar que se acomodan
+    const rbLabel = document.querySelector<HTMLElement>(".node--rebuild .node__label");
+    if (rbLabel) {
+      const word = rbLabel.textContent ?? "";
+      const GLYPHS = "▓▒░#/<>_=+*01";
+      window.setInterval(() => {
+        const btn = rbLabel.closest(".node")!;
+        if (!btn.classList.contains("is-placed") || document.hidden) return;
+        let step = 0;
+        rbLabel.classList.add("is-glitch");
+        const id = window.setInterval(() => {
+          step++;
+          rbLabel.textContent = [...word]
+            .map((ch, k) => (k < step - 3 ? ch : GLYPHS[Math.floor(Math.random() * GLYPHS.length)]))
+            .join("");
+          if (step - 3 >= word.length) {
+            clearInterval(id);
+            rbLabel.textContent = word;
+            rbLabel.classList.remove("is-glitch");
+          }
+        }, 55);
+      }, 4200);
     }
 
     async function backToNodes() {
       if (!rebuilding || body.classList.contains("is-switching")) return;
+      body.classList.add("is-switching");
+      // 1. Los punteros borran la página
       await rebuilder.unbuild();
-      await lightsOut();
+      // 2. Se va el fondo y todo queda a oscuras
+      body.classList.add("is-dark", "core-off");
+      await pause(1000);
       body.classList.remove("is-rebuild");
-      await lightsOn();
+      await pause(500);
+      // 3. El núcleo se enciende de nuevo en la oscuridad, parpadeando
+      swapClass("core-igniting", "core-off");
+      world?.flare();
+      sfx.check();
+      await pause(650);
+      sfx.hover();
+      await pause(900);
+      // 4. Vuelve el fondo y los punteros entran a la pantalla
+      body.classList.add("is-reentering");
+      body.classList.remove("is-dark");
+      topo.setIntensity(0.35);
+      topo.pulse(innerWidth / 2, innerHeight / 2, 0.8);
+      await pause(1300);
+      body.classList.remove("core-igniting", "is-reentering", "is-switching");
       rebuilding = false;
+      // 5. Se arma la interfaz de nodos como siempre
       wake();
     }
     rbBack.addEventListener("click", backToNodes);
@@ -583,7 +627,7 @@ const base = import.meta.env.BASE_URL;
     // ---------- Eventos ----------
     core.addEventListener("click", () => {
       if (world?.justDragged()) return; // fue un giro, no un clic
-      if (body.classList.contains("is-booting") || body.classList.contains("is-building") || closing) return;
+      if (body.classList.contains("is-booting") || body.classList.contains("is-building") || closing || rebuilding) return;
       if (!body.classList.contains("is-awake")) wake();
       else if (body.classList.contains("has-panel")) closePanel();
       else sleep();
@@ -605,6 +649,7 @@ const base = import.meta.env.BASE_URL;
     addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
       if (body.classList.contains("is-rebuild")) backToNodes();
+      else if (rebuilding) return;
       else closePanel();
     });
 
