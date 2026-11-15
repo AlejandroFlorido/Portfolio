@@ -1,0 +1,190 @@
+---
+// Página tipo CV que arman los punteros al tocar el nodo "Reconstruir".
+// Cada elemento con data-b lo construye un puntero:
+//   box  = dibuja el recuadro (con medidas) y aparece el bloque
+//   type = escribe el texto letra por letra
+//   big  = traza el título gigante de contorno de izquierda a derecha
+import "../styles/rebuild.css";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<div class="rb" data-rb aria-hidden="true" tabindex="-1">
+  <div class="rb__page" data-rb-page>
+    <header class="rb-nav" data-rb-sec>
+      <a class="rb-nav__logo" href="#rb-top" data-b="box">AF<span>.</span></a>
+      <nav class="rb-nav__links" aria-label="Secciones del CV">
+        <a href="#rb-perfil" data-b="box">Perfil</a>
+        <a href="#rb-experiencia" data-b="box">Experiencia</a>
+        <a href="#rb-proyectos" data-b="box">Proyectos</a>
+        <a href="#rb-estudios" data-b="box">Estudios</a>
+        <a href="#rb-contacto" data-b="box">Contacto</a>
+      </nav>
+      <button class="rb-back" type="button" data-rb-back>
+        <span class="rb-back__dot" aria-hidden="true"></span>Volver al nodo principal
+      </button>
+    </header>
+
+    <!-- ===== Portada ===== -->
+    <section class="rb-hero" id="rb-top" data-rb-sec>
+      <h1 class="rb-hero__big" data-b="big" aria-label="Portfolio">PORTFOLIO</h1>
+      <div class="rb-hero__grid">
+        <div class="rb-hero__intro">
+          <p class="rb-hero__hello" data-b="box">Hola, soy</p>
+          <p class="rb-hero__name" data-b="box">ALEJANDRO.</p>
+          <p class="rb-chip" data-b="type">● Desarrollador web &amp; Python</p>
+          <p class="rb-hero__text" data-b="type">
+            Construyo interfaces web interactivas y aplicaciones de escritorio en Python que automatizan tareas
+            reales: de 24 horas de control semanal a solo 2.
+          </p>
+          <div class="rb-hero__ctas">
+            <a class="rb-btn rb-btn--solid" href={`${base}cv-alejandro-florido.pdf`} target="_blank" rel="noopener" data-b="box">Ver CV →</a>
+            <a class="rb-btn" href="https://github.com/AlejandroFlorido" target="_blank" rel="noopener" data-b="box">GitHub ↗</a>
+          </div>
+          <dl class="rb-stats">
+            <div data-b="box"><dt>−90%</dt><dd>horas de control</dd></div>
+            <div data-b="box"><dt>30+</dt><dd>proveedores</dd></div>
+            <div data-b="box"><dt>85%</dt><dd>tecnicatura UTN</dd></div>
+          </dl>
+        </div>
+        <figure class="rb-photo" data-b="box">
+          <img src={`${base}images/foto-cv.jpg`} alt="Alejandro Florido" width="500" height="500" loading="lazy" />
+          <figcaption>● Sistema en línea</figcaption>
+        </figure>
+        <ol class="rb-index">
+          <li data-b="box"><b>01.</b><strong>Procesador de fichadas</strong><span>Python · Tkinter · pandas</span></li>
+          <li data-b="box"><b>02.</b><strong>Portfolio 3D</strong><span>Astro · TypeScript · Three.js</span></li>
+          <li data-b="box"><b>03.</b><strong>Grupo Ginesta</strong><span>Auditoría · Compras · IT</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ===== Perfil ===== -->
+    <section class="rb-sec" id="rb-perfil" data-rb-sec>
+      <p class="rb-sec__code" data-b="type">//01 SEC_PERFIL [01/05]</p>
+      <h2 class="rb-sec__title" data-b="box">Perfil &amp; Filosofía</h2>
+      <div class="rb-cols">
+        <div class="rb-cols__main">
+          <p data-b="type">
+            Soy Alejandro Florido, de Resistencia, Chaco. Estudio la Tecnicatura Universitaria en Programación en la UTN
+            (85% aprobado) y antes cursé Ingeniería en Sistemas hasta 4.º año.
+          </p>
+          <p data-b="type">
+            Trabajo en Grupo Ginesta como auditor, encargado de compras y asistente de sistemas. Ahí aprendí que el mejor
+            código es el que le ahorra horas a alguien: por eso automatizo todo lo que se repite.
+          </p>
+          <blockquote class="rb-quote" data-b="box">
+            "Uso la inteligencia artificial como una herramienta más del equipo: para pensar, construir y probar más rápido,
+            sin dejar de entender cada línea."
+          </blockquote>
+        </div>
+        <ul class="rb-side">
+          <li data-b="box"><strong>Automatización</strong><span>Python, Excel y CSV</span></li>
+          <li data-b="box"><strong>Interfaces web</strong><span>Astro, TypeScript, Three.js</span></li>
+          <li data-b="box"><strong>Desarrollo con IA</strong><span>Claude Code, ChatGPT</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===== Experiencia ===== -->
+    <section class="rb-sec" id="rb-experiencia" data-rb-sec>
+      <p class="rb-sec__code" data-b="type">//02 SEC_EXPERIENCIA [02/05]</p>
+      <h2 class="rb-sec__title" data-b="box">Experiencia</h2>
+      <article class="rb-job" data-b="box">
+        <header>
+          <h3>Auditor general, encargado de compras y asistente de sistemas y redes</h3>
+          <p>Grupo Ginesta · Resistencia, Chaco · Jun. 2024 – actualidad</p>
+        </header>
+        <ul>
+          <li>Desarrollé una aplicación de escritorio en Python que reduce el control de horas del personal de 24 a 2 horas semanales.</li>
+          <li>Gestiono las compras con más de 30 proveedores de 6 rubros: comparo cotizaciones, negocio precios y emito órdenes.</li>
+          <li>Audito registros y asistencia, detecto inconsistencias y armo informes para la dirección.</li>
+          <li>Mantengo los equipos y la red, y doy soporte técnico a los usuarios.</li>
+        </ul>
+      </article>
+      <article class="rb-job" data-b="box">
+        <header>
+          <h3>Trader de activos digitales (independiente)</h3>
+          <p>Remoto · Dic. 2021 – Nov. 2022</p>
+        </header>
+        <ul>
+          <li>Compra y venta de NFT con análisis de mercado y seguimiento de precios.</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ===== Proyectos ===== -->
+    <section class="rb-sec" id="rb-proyectos" data-rb-sec>
+      <p class="rb-sec__code" data-b="type">//03 SEC_PROYECTOS [03/05]</p>
+      <h2 class="rb-sec__title" data-b="box">Proyectos destacados</h2>
+      <div class="rb-cards">
+        <article class="rb-card" data-b="box">
+          <b>01</b>
+          <h3>Procesador de fichadas</h3>
+          <p>App de escritorio que empareja entradas y salidas del reloj de asistencia con programación dinámica y genera un Excel con alertas por colores.</p>
+          <span>Python · Tkinter · pandas · openpyxl</span>
+        </article>
+        <article class="rb-card" data-b="box">
+          <b>02</b>
+          <h3>Portfolio interactivo</h3>
+          <p>Este sitio: escena 3D navegable, punteros que arman la interfaz y sonido generado por código, con deploy continuo.</p>
+          <span>Astro · TypeScript · Three.js · GitHub Actions</span>
+        </article>
+        <article class="rb-card" data-b="box">
+          <b>03</b>
+          <h3>Un POV diferente</h3>
+          <p>Proyecto web personal.</p>
+          <a href="https://github.com/AlejandroFlorido/unpovdiferente" target="_blank" rel="noopener">Ver repo ↗</a>
+        </article>
+        <article class="rb-card" data-b="box">
+          <b>04</b>
+          <h3>Proyecto final UTN</h3>
+          <p>Trabajo integrador de la carrera.</p>
+          <a href="https://github.com/AlejandroFlorido/proyectoFinalUTN" target="_blank" rel="noopener">Ver repo ↗</a>
+        </article>
+        <article class="rb-card" data-b="box">
+          <b>05</b>
+          <h3>Alquiler de canchas</h3>
+          <p>Sistema de reservas de canchas.</p>
+          <a href="https://github.com/AlejandroFlorido/alquilerDeCanchas" target="_blank" rel="noopener">Ver repo ↗</a>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===== Estudios y habilidades ===== -->
+    <section class="rb-sec" id="rb-estudios" data-rb-sec>
+      <p class="rb-sec__code" data-b="type">//04 SEC_ESTUDIOS [04/05]</p>
+      <h2 class="rb-sec__title" data-b="box">Estudios &amp; Habilidades</h2>
+      <div class="rb-cols">
+        <ul class="rb-timeline">
+          <li data-b="box"><b>2025 – 2027</b><strong>Tecnicatura Universitaria en Programación</strong><span>UTN FRRe · 85% aprobado</span></li>
+          <li data-b="box"><b>2018 – 2024</b><strong>Ingeniería en Sistemas de Información</strong><span>UTN FRRe · hasta 4.º año (60%)</span></li>
+          <li data-b="box"><b>2021</b><strong>Desarrollo Web y Bases de Datos</strong><span>Python, Django, Bootstrap, MySQL, SQL Server</span></li>
+        </ul>
+        <div class="rb-tags">
+          <span data-b="box">JavaScript</span><span data-b="box">TypeScript</span><span data-b="box">HTML5</span>
+          <span data-b="box">CSS3</span><span data-b="box">Astro</span><span data-b="box">Three.js</span>
+          <span data-b="box">Python</span><span data-b="box">Tkinter</span><span data-b="box">pandas</span>
+          <span data-b="box">Django</span><span data-b="box">Java</span><span data-b="box">SQL</span>
+          <span data-b="box">Git</span><span data-b="box">GitHub Actions</span><span data-b="box">IA / Claude Code</span>
+          <span data-b="box">Inglés intermedio</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Contacto ===== -->
+    <section class="rb-sec rb-contact" id="rb-contacto" data-rb-sec>
+      <p class="rb-sec__code" data-b="type">//05 SEC_CONTACTO [05/05]</p>
+      <h2 class="rb-sec__title" data-b="box">¿Construimos algo?</h2>
+      <div class="rb-contact__row">
+        <a class="rb-btn rb-btn--solid" href="mailto:floridosalejandro@gmail.com" data-b="box">Escribime ✉</a>
+        <a class="rb-btn" href="https://www.linkedin.com/in/alejandro-florido-453950283/" target="_blank" rel="noopener" data-b="box">LinkedIn ↗</a>
+        <a class="rb-btn" href="https://github.com/AlejandroFlorido" target="_blank" rel="noopener" data-b="box">GitHub ↗</a>
+        <a class="rb-btn" href={`${base}cv-alejandro-florido-ats.pdf`} target="_blank" rel="noopener" data-b="box">CV para ATS ↗</a>
+      </div>
+      <p class="rb-foot" data-b="type">© {new Date().getFullYear()} Alejandro Florido · página reconstruida por agentes</p>
+    </section>
+  </div>
+</div>
+
+<div class="blackout" aria-hidden="true" data-blackout></div>

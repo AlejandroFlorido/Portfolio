@@ -1,0 +1,409 @@
+/* =========================================================
+   Nodo "Reconstruir": apagón y página tipo CV armada por punteros
+   ========================================================= */
+
+/* Apagón: la pantalla se va a negro y vuelve */
+.blackout {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+body.is-switching .blackout { pointer-events: auto; }
+
+/* Mientras está la página reconstruida, la interfaz de nodos no se ve */
+body.is-rebuild .stage,
+body.is-rebuild .hud,
+body.is-rebuild .copyright,
+body.is-rebuild .panel,
+body.is-rebuild .closer,
+body.is-rebuild .closer__link,
+body.is-rebuild .hint,
+body.is-rebuild > .agent,
+body.is-rebuild > .sel {
+  visibility: hidden !important;
+}
+
+.rb {
+  --rb-line: rgba(80, 220, 255, 0.22);
+  --rb-card: rgba(4, 16, 26, 0.72);
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-color: var(--cyan-faint) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+body.is-rebuild .rb { display: block; }
+.rb:focus { outline: none; }
+
+.rb__page {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 32px 80px;
+}
+
+/* Elementos todavía sin construir: ocupan su lugar pero no se ven */
+.rb [data-b] { opacity: 0; }
+.rb [data-b].is-built { opacity: 1; transition: opacity 0.35s ease; }
+.rb [data-b].is-filling { opacity: 1; animation: rb-fill 0.5s ease-out both; }
+@keyframes rb-fill {
+  from { clip-path: inset(0 100% 0 0); filter: brightness(2.2); }
+  to { clip-path: inset(0 0 0 0); filter: none; }
+}
+.rb [data-b="big"].is-filling { animation: none; clip-path: inset(-10% calc((1 - var(--draw, 0)) * 100%) -10% 0); }
+.rb [data-b="type"].is-typing { opacity: 1; }
+
+/* Recuadro que dibuja un puntero, con su medida */
+.rb-wire {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid rgba(80, 220, 255, 0.85);
+  background: rgba(80, 220, 255, 0.07);
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.rb-wire::before,
+.rb-wire::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #d4faff;
+  box-shadow: 0 0 6px var(--cyan);
+}
+.rb-wire::before { left: -3px; top: -3px; }
+.rb-wire::after { right: -3px; bottom: -3px; }
+.rb-wire__size {
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  background: var(--cyan);
+  color: #03070d;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.rb-wire.is-done { opacity: 0; }
+.rb-wire.is-check { border-color: #d4faff; background: rgba(80, 220, 255, 0.04); border-style: dashed; }
+
+/* Cruces de referencia que dejan los punteros */
+.rb-mark {
+  position: absolute;
+  z-index: 2;
+  width: 11px;
+  height: 11px;
+  margin: -5px 0 0 -5px;
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.6s ease;
+}
+.rb-mark::before,
+.rb-mark::after {
+  content: "";
+  position: absolute;
+  background: #a6f4ff;
+}
+.rb-mark::before { left: 5px; top: 0; width: 1px; height: 11px; }
+.rb-mark::after { top: 5px; left: 0; height: 1px; width: 11px; }
+.rb-mark.is-done { opacity: 0; }
+
+/* Puntero de texto mientras escribe */
+.rb-caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.12em;
+  background: var(--cyan);
+  animation: rb-blink 0.7s steps(1) infinite;
+}
+@keyframes rb-blink { 50% { opacity: 0; } }
+
+/* Punteros de la página: se mueven con el scroll */
+.rb .agent { z-index: 4; }
+
+/* ---------- Barra superior ---------- */
+.rb-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 0;
+  background: rgba(3, 7, 13, 0.9);
+  border-bottom: 1px solid rgba(80, 220, 255, 0.12);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rb-nav__logo {
+  font-family: "Anton", var(--font-display);
+  font-size: 1.5rem;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.rb-nav__logo span { color: var(--cyan); }
+.rb-nav__links { display: flex; gap: 18px; flex-wrap: wrap; }
+.rb-nav__links a {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.rb-nav__links a:hover { color: var(--cyan); }
+
+/* Botón para volver: aparece cuando terminan de construir la portada */
+.rb-back {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border: 1px solid var(--cyan);
+  background: rgba(80, 220, 255, 0.1);
+  color: var(--cyan);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.4s ease, transform 0.4s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.rb-back.is-ready { opacity: 1; pointer-events: auto; transform: none; }
+.rb-back:hover,
+.rb-back:focus-visible { background: rgba(80, 220, 255, 0.22); box-shadow: 0 0 18px rgba(80, 220, 255, 0.45); }
+.rb-back__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  animation: rb-blink 1.6s steps(1) infinite;
+}
+
+/* ---------- Portada ---------- */
+.rb-hero { padding-top: 10px; min-height: calc(100vh - 80px); }
+.rb-hero__big {
+  margin: 0;
+  font-family: "Anton", var(--font-display);
+  font-weight: 400;
+  font-size: clamp(4.2rem, 17vw, 13.5rem);
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(80, 220, 255, 0.75);
+  text-shadow: 0 0 40px rgba(80, 220, 255, 0.18);
+  white-space: nowrap;
+}
+.rb-hero__grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.9fr 0.85fr;
+  gap: 32px;
+  margin-top: -18px;
+  align-items: start;
+}
+.rb-hero__hello {
+  margin: 0;
+  font-family: "Caveat", cursive;
+  font-size: 2.2rem;
+  color: var(--text);
+}
+.rb-hero__name {
+  display: inline-block;
+  margin: 2px 0 14px;
+  padding: 4px 14px 2px;
+  font-family: "Anton", var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  background: var(--cyan);
+  color: #03070d;
+  box-shadow: 0 0 30px rgba(80, 220, 255, 0.35);
+}
+.rb-chip {
+  display: inline-block;
+  margin: 0 0 18px;
+  padding: 5px 10px;
+  border: 1px solid var(--rb-line);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.rb-hero__text { margin: 0 0 22px; max-width: 34em; line-height: 1.6; color: var(--text); font-size: 0.92rem; }
+.rb-hero__ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
+.rb-btn {
+  display: inline-block;
+  padding: 10px 18px;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-card);
+  color: var(--text);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+.rb-btn:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 16px rgba(80, 220, 255, 0.3); }
+.rb-btn--solid { background: rgba(80, 220, 255, 0.14); border-color: var(--cyan); color: var(--cyan); }
+.rb-stats { display: flex; flex-wrap: wrap; gap: 28px; margin: 0; }
+.rb-stats div { margin: 0; }
+.rb-stats dt { font-family: "Anton", var(--font-display); font-size: 1.8rem; color: var(--cyan); }
+.rb-stats dd { margin: 0; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+.rb-photo {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 1px solid var(--rb-line);
+  background: #0a3d4f;
+}
+.rb-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.25) brightness(0.85);
+  mix-blend-mode: luminosity;
+  opacity: 0.9;
+}
+.rb-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 55%, rgba(3, 7, 13, 0.75)),
+    repeating-linear-gradient(to bottom, rgba(80, 220, 255, 0.07) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+.rb-photo figcaption {
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  bottom: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--cyan);
+  background: rgba(3, 7, 13, 0.8);
+  color: var(--cyan);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.rb-index { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.rb-index li {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--cyan);
+  background: var(--rb-card);
+}
+.rb-index b { font-size: 0.62rem; color: var(--cyan); }
+.rb-index strong { font-size: 0.86rem; color: var(--text); }
+.rb-index span { font-size: 0.66rem; color: var(--muted); }
+
+/* ---------- Secciones ---------- */
+.rb-sec { padding: 90px 0 20px; scroll-margin-top: 60px; }
+.rb-sec__code { margin: 0 0 6px; font-size: 0.7rem; letter-spacing: 0.16em; color: var(--cyan); }
+.rb-sec__title {
+  display: inline-block;
+  margin: 0 0 28px;
+  font-family: "Anton", var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.rb-cols { display: grid; grid-template-columns: 1.6fr 1fr; gap: 40px; }
+.rb-cols__main p { margin: 0 0 16px; line-height: 1.7; font-size: 0.9rem; }
+.rb-quote {
+  margin: 22px 0 0;
+  padding: 14px 18px;
+  border-left: 2px solid var(--cyan);
+  background: var(--rb-card);
+  font-style: italic;
+  line-height: 1.6;
+  color: #e8fbff;
+}
+.rb-side, .rb-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; align-content: start; }
+.rb-side li, .rb-timeline li {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-card);
+}
+.rb-side strong, .rb-timeline strong { font-size: 0.86rem; }
+.rb-side span, .rb-timeline span { font-size: 0.7rem; color: var(--muted); }
+.rb-timeline b { font-size: 0.62rem; letter-spacing: 0.14em; color: var(--cyan); }
+
+.rb-job {
+  margin-bottom: 18px;
+  padding: 18px 22px;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-card);
+}
+.rb-job h3 { margin: 0 0 4px; font-size: 1rem; color: var(--text); }
+.rb-job header p { margin: 0 0 10px; font-size: 0.72rem; color: var(--cyan); letter-spacing: 0.06em; }
+.rb-job ul { margin: 0; padding-left: 18px; }
+.rb-job li { margin-bottom: 6px; line-height: 1.55; font-size: 0.84rem; }
+.rb-job li::marker { color: var(--cyan); }
+
+.rb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.rb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-card);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.rb-card:hover { border-color: var(--cyan); transform: translateY(-3px); }
+.rb-card b { font-family: "Anton", var(--font-display); font-size: 1.4rem; color: var(--cyan); font-weight: 400; }
+.rb-card h3 { margin: 0; font-size: 0.95rem; }
+.rb-card p { margin: 0; flex: 1; font-size: 0.78rem; line-height: 1.55; color: #b9dbe6; }
+.rb-card span { font-size: 0.64rem; color: var(--muted); }
+.rb-card a { font-size: 0.7rem; letter-spacing: 0.1em; }
+
+.rb-tags { display: flex; flex-wrap: wrap; gap: 8px; align-content: start; }
+.rb-tags span {
+  padding: 6px 10px;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-card);
+  font-size: 0.72rem;
+}
+
+.rb-contact__row { display: flex; flex-wrap: wrap; gap: 12px; }
+.rb-foot { margin: 70px 0 0; font-size: 0.66rem; letter-spacing: 0.12em; color: var(--muted); }
+
+/* ---------- Celular ---------- */
+@media (max-width: 900px) {
+  .rb-hero__grid { grid-template-columns: 1fr 1fr; }
+  .rb-hero__intro { grid-column: 1 / -1; }
+  .rb-cols { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .rb__page { padding: 0 16px 60px; }
+  .rb-nav { flex-wrap: wrap; gap: 10px 16px; padding: 12px 0; }
+  .rb-nav__links { order: 3; width: 100%; gap: 12px; }
+  .rb-nav__links a { font-size: 0.62rem; }
+  .rb-back { padding: 8px 12px; font-size: 0.62rem; }
+  .rb-hero__big { -webkit-text-stroke-width: 1.4px; margin-top: 8px; }
+  .rb-hero__grid { grid-template-columns: 1fr; margin-top: 0; }
+  .rb-photo { max-width: 320px; }
+  .rb-sec { padding-top: 60px; }
+}
