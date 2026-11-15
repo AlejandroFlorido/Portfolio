@@ -5,17 +5,39 @@
 /* ---------- Transición: se va el fondo, el núcleo parpadea ---------- */
 .hud,
 .copyright { transition: opacity 0.9s ease; }
+/* Durante el cambio, el fondo y la interfaz se apagan y se prenden de a poco */
+body.is-switching #topo,
+body.is-switching .vignette,
+body.is-switching .hud,
+body.is-switching .copyright,
+body.is-switching .links,
+body.is-switching .hint { transition: opacity 2.6s ease-in-out !important; }
 body.is-dark #topo,
 body.is-dark .vignette,
 body.is-dark .hud,
-body.is-dark .copyright { opacity: 0 !important; }
-body.is-dark .hint,
+body.is-dark .copyright,
 body.is-dark .links,
-body.is-dark > .agent,
-body.is-dark .stage .agent { visibility: hidden !important; }
+body.is-dark .hint { opacity: 0 !important; }
 body.is-switching .stage,
 body.is-switching .core,
 body.is-switching .node { pointer-events: none !important; }
+
+/* Los punteros se van de la pantalla por los costados */
+body.is-leaving .stage .agent svg,
+body.is-leaving > .agent svg { animation: agent-leave 1.3s cubic-bezier(0.6, 0, 0.9, 0.4) forwards; }
+body.is-leaving .stage .agent:nth-child(odd) svg,
+body.is-leaving > .agent:nth-child(odd) svg { --to: -110vw; }
+body.is-leaving .stage .agent:nth-child(3n) svg,
+body.is-leaving > .agent:nth-child(3n) svg { animation-delay: 0.12s; }
+body.is-leaving .stage .agent:nth-child(4n) svg,
+body.is-leaving > .agent:nth-child(4n) svg { animation-delay: 0.25s; }
+body.is-leaving .stage .agent__tag,
+body.is-leaving > .agent .agent__tag { opacity: 0; transition: opacity 0.3s ease; }
+@keyframes agent-leave {
+  from { translate: 0 0; opacity: 1; }
+  80% { opacity: 1; }
+  to { translate: var(--to, 110vw) 0; opacity: 0; }
+}
 
 /* El núcleo falla como un tubo y se apaga */
 body.core-dying .stage { animation: core-die 1.6s linear forwards; }
@@ -50,18 +72,27 @@ body.core-igniting .stage { animation: core-ignite 1.6s linear forwards; }
   56% { opacity: 1; filter: brightness(1.6); }
   100% { opacity: 1; filter: none; }
 }
-/* Los punteros vuelven a entrar desde los costados */
-body.is-reentering .stage .agent svg { animation: agent-reenter 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-body.is-reentering .stage .agent:nth-child(odd) svg { --from: -160px; }
-body.is-reentering .stage .agent:nth-child(3n) svg { animation-delay: 0.15s; }
-body.is-reentering .stage .agent:nth-child(4n) svg { animation-delay: 0.3s; }
+/* Los punteros vuelven a entrar a la pantalla desde los costados */
+body.is-reentering .stage .agent svg,
+body.is-reentering > .agent svg { animation: agent-reenter 1.6s cubic-bezier(0.15, 0.7, 0.25, 1) backwards; }
+body.is-reentering .stage .agent:nth-child(odd) svg,
+body.is-reentering > .agent:nth-child(odd) svg { --from: -110vw; }
+body.is-reentering .stage .agent:nth-child(3n) svg,
+body.is-reentering > .agent:nth-child(3n) svg { animation-delay: 0.2s; }
+body.is-reentering .stage .agent:nth-child(4n) svg,
+body.is-reentering > .agent:nth-child(4n) svg { animation-delay: 0.4s; }
 @keyframes agent-reenter {
-  from { translate: var(--from, 160px) 0; opacity: 0; }
+  from { translate: var(--from, 110vw) 0; opacity: 0; }
+  20% { opacity: 1; }
   to { translate: 0 0; opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   body.core-dying .stage { animation: core-die 1.6s linear forwards !important; }
   body.core-igniting .stage { animation: core-ignite 1.6s linear forwards !important; }
+  body.is-leaving .stage .agent svg,
+  body.is-leaving > .agent svg { animation: agent-leave 1.3s ease-in forwards !important; }
+  body.is-reentering .stage .agent svg,
+  body.is-reentering > .agent svg { animation: agent-reenter 1.6s ease-out backwards !important; }
 }
 
 /* ---------- Nodo especial "Reconstruir" ---------- */
