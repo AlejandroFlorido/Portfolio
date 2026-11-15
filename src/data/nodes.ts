@@ -37,8 +37,13 @@ export const nodes: NodeSection[] = [
     code: "SKL-03",
     html: `
       <div class="panel__tags">
-        <span>HTML</span><span>CSS</span><span>JavaScript</span><span>Java</span>
-        <span>Python</span><span>SQL</span><span>Git</span>
+        <span>JavaScript</span><span>TypeScript</span><span>HTML5</span><span>CSS3</span>
+        <span>Astro</span><span>Three.js</span><span>Bootstrap</span><span>Diseño responsive</span>
+        <span>Python</span><span>Tkinter</span><span>pandas</span><span>openpyxl</span>
+        <span>Automatización Excel/CSV</span><span>Django</span><span>Java</span><span>SQL</span>
+        <span>MySQL</span><span>SQL Server</span><span>Git</span><span>GitHub</span>
+        <span>GitHub Actions</span><span>VS Code</span><span>Claude Code</span><span>ChatGPT</span>
+        <span>Prompt engineering</span><span>Soporte técnico y redes</span><span>Inglés intermedio</span>
       </div>
     `,
   },
