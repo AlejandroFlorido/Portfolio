@@ -11,6 +11,7 @@ const ARROW = `<svg viewBox="0 0 16 18" aria-hidden="true"><path d="M1.5 1.5 4 1
 const SHADES = ["#50dcff", "#a6f4ff", "#2eb6e0", "#d4faff", "#74d4f2"];
 const BUILDERS = 10;
 const PATROL = 3;
+const FOLLOWERS = 3;
 const CHAOS = 1.2;
 
 interface Bot {
@@ -59,6 +60,12 @@ export function createRebuilder(o: RebuilderOptions) {
   const keeper = makeBot("#ffd84a");
   keeper.el.classList.add("agent--keeper");
   const foot = o.page.querySelector<HTMLElement>(".rb-foot");
+  // Los rojos también vienen: depuran la página y, al salir, la borran
+  const reds = [makeBot("#ff4d5e"), makeBot("#ff8f80")];
+  reds.forEach((b) => b.el.classList.add("agent--red"));
+  // Y unos cian que siguen al puntero del visitante, en fila y sin apuro
+  const followers = Array.from({ length: FOLLOWERS }, (_, i) => makeBot(SHADES[(i + 1) % SHADES.length]));
+  const others = () => [...patrol, keeper, ...reds, ...followers];
 
   const render = (b: Bot) => (b.el.style.transform = `translate3d(${b.pos.x}px, ${b.pos.y}px, 0)`);
   function show(b: Bot, at: Pt, tag = "") {
@@ -273,9 +280,14 @@ export function createRebuilder(o: RebuilderOptions) {
   // ---------- Punteros que patrullan la página terminada ----------
   async function patrolLoop(b: Bot, i: number, g: number) {
     const calm = b === keeper;
-    const label = calm ? "REVISIÓN" : "CONTROL";
+    const red = reds.includes(b);
+    const label = calm ? "REVISIÓN" : red ? "DEPURAR" : "CONTROL";
     const v = view();
-    show(b, { x: calm ? v.w * 0.8 : v.w * (0.2 + i * 0.3), y: v.top + v.h * (calm ? 1 : 0.85) }, label);
+    show(
+      b,
+      { x: calm ? v.w * 0.8 : red ? (i % 2 ? v.w + 20 : -20) : v.w * (0.2 + i * 0.3), y: v.top + v.h * (calm ? 1 : red ? 0.4 : 0.85) },
+      label,
+    );
     await wait(400 + i * 700, g);
     while (g === gen) {
       const v2 = view();
@@ -299,9 +311,22 @@ export function createRebuilder(o: RebuilderOptions) {
         target = { x: v2.w * (0.1 + Math.random() * 0.8), y: v2.top + v2.h * (0.2 + Math.random() * 0.7) };
       }
       tagOf(b, pick === foot && calm ? "COPYRIGHT" : label);
-      if (!(await move(b, target, (calm ? 2600 : 1700) + Math.random() * 1400, g))) return;
-      // A veces revisa el bloque: lo enmarca un momento y da el OK
-      if (pick && Math.random() < 0.35) {
+      if (!(await move(b, target, (calm ? 2600 : red ? 1000 : 1700) + Math.random() * (red ? 700 : 1400), g))) return;
+      // Los rojos buscan errores: marcan el bloque en rojo y después lo dan por bueno
+      if (red && pick && Math.random() < 0.45) {
+        const r = rel(pick);
+        const wf = wire(r.x - 4, r.y - 4, "is-bug");
+        wf.el.style.width = `${r.w + 8}px`;
+        wf.el.style.height = `${r.h + 8}px`;
+        wf.size.textContent = "¿BUG?";
+        click(b);
+        tagOf(b, "¿BUG?");
+        if (!(await wait(650, g))) return;
+        wf.size.textContent = "0 ERRORES";
+        tagOf(b, "LIMPIO ✓");
+        fadeOut(wf.el, 500);
+      } else if (!red && pick && Math.random() < 0.35) {
+        // A veces revisa el bloque: lo enmarca un momento y da el OK
         const r = rel(pick);
         const wf = wire(r.x - 4, r.y - 4, "is-check");
         wf.el.style.width = `${r.w + 8}px`;
@@ -311,8 +336,54 @@ export function createRebuilder(o: RebuilderOptions) {
         tagOf(b, "OK ✓");
         fadeOut(wf.el, 700);
       }
-      if (!(await wait(700 + Math.random() * 1500, g))) return;
+      if (!(await wait((red ? 300 : 700) + Math.random() * (red ? 700 : 1500), g))) return;
     }
+  }
+
+  // ---------- Punteros que siguen al mouse del visitante ----------
+  // El primero va detrás del mouse y cada uno sigue al anterior, como una fila.
+  // Van a velocidad normal tirando a lenta y nunca se le suben encima.
+  const mouse = { x: 0, y: 0, seen: false, moved: 0 };
+  o.root.addEventListener("pointermove", (e) => {
+    if (e.pointerType === "touch") return;
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mouse.seen = true;
+    mouse.moved = performance.now();
+  });
+  function followLoop(g: number) {
+    const v = view();
+    followers.forEach((b, i) => show(b, { x: -30 - i * 30, y: v.top + v.h * (0.3 + i * 0.15) }, "SIGUIENDO"));
+    let last = performance.now();
+    const step = (now: number) => {
+      if (g !== gen) return;
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const p = o.page.getBoundingClientRect();
+      const vv = view();
+      // Sin mouse (por ejemplo en el celular) se quedan rondando la pantalla
+      const lead: Pt = mouse.seen
+        ? { x: mouse.x - p.left, y: mouse.y - p.top }
+        : { x: vv.w * (0.5 + Math.sin(now / 2600) * 0.35), y: vv.top + vv.h * (0.55 + Math.sin(now / 1900) * 0.25) };
+      const idle = !mouse.seen || now - mouse.moved > 2500;
+      followers.forEach((b, i) => {
+        const ahead = i === 0 ? lead : followers[i - 1].pos;
+        const gap = i === 0 ? 34 : 26;
+        const dx = ahead.x - b.pos.x;
+        const dy = ahead.y - b.pos.y;
+        const d = Math.hypot(dx, dy) || 1;
+        // Se acerca hasta quedar a cierta distancia, con un leve vaivén
+        const pull = Math.max(0, d - gap) / d;
+        const k = 1 - Math.exp(-dt * (i === 0 ? 2.2 : 3));
+        const sway = Math.sin(now / 420 + i * 1.7) * 0.6;
+        b.pos = { x: b.pos.x + dx * pull * k - (dy / d) * sway, y: b.pos.y + dy * pull * k + (dx / d) * sway };
+        render(b);
+        const label = idle ? "ESPERANDO" : "SIGUIENDO";
+        if (b.tag.textContent !== label) tagOf(b, label);
+      });
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   // ---------- Observador: arma cada sección al llegar a la pantalla ----------
@@ -344,7 +415,7 @@ export function createRebuilder(o: RebuilderOptions) {
     });
     extras.forEach((el) => el.remove());
     extras.clear();
-    [...builders, ...patrol, keeper].forEach(hide);
+    [...builders, ...others()].forEach(hide);
     o.back.classList.remove("is-ready");
     o.root.scrollTop = 0;
   }
@@ -365,7 +436,8 @@ export function createRebuilder(o: RebuilderOptions) {
       sfx.check();
       o.back.classList.add("is-ready");
       watch(g);
-      [...patrol, keeper].forEach((b, i) => patrolLoop(b, i, g));
+      [...patrol, keeper, ...reds].forEach((b, i) => patrolLoop(b, i, g));
+      followLoop(g);
     },
 
     /** Desarma lo que se ve en pantalla (rápido) y deja todo listo para la próxima. */
@@ -373,7 +445,7 @@ export function createRebuilder(o: RebuilderOptions) {
       const g = ++gen;
       observer?.disconnect();
       o.back.classList.remove("is-ready");
-      [...patrol, keeper].forEach((b) => tagOf(b, ""));
+      [...patrol, keeper, ...followers].forEach((b) => tagOf(b, ""));
       const v = view();
       const visible = all
         .filter((el) => el.classList.contains("is-built") || el.classList.contains("is-typing"))
@@ -382,7 +454,8 @@ export function createRebuilder(o: RebuilderOptions) {
           return r.y + r.h > v.top && r.y < v.top + v.h;
         })
         .reverse();
-      const crew = builders.slice(0, 6);
+      // Los rojos encabezan el borrado
+      const crew = [...reds, ...builders.slice(0, 4)];
       crew.forEach((b, i) => show(b, { x: (v.w / 6) * (i + 0.5), y: v.top + v.h * 0.5 }, "BORRAR"));
       sfx.close();
       await Promise.all(

@@ -195,6 +195,10 @@ body.is-rebuild .rb { display: block; }
   white-space: nowrap;
 }
 .rb-wire.is-done { opacity: 0; }
+.rb-wire.is-bug { border: 1px dashed #ff4d5e; background: rgba(255, 77, 94, 0.06); }
+.rb-wire.is-bug .rb-wire__size { background: #ff4d5e; color: #1a0306; }
+.rb-wire.is-bug::before,
+.rb-wire.is-bug::after { background: #ffd0cb; box-shadow: 0 0 6px #ff4d5e; }
 .rb-wire.is-check { border-color: #d4faff; background: rgba(80, 220, 255, 0.04); border-style: dashed; }
 
 /* Cruces de referencia que dejan los punteros */
