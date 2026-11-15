@@ -5,6 +5,8 @@ export interface NodeSection {
   label: string;
   code: string; // etiqueta corta estilo HUD
   html: string;
+  /** Nodo que no abre panel sino que hace otra cosa. */
+  action?: "rebuild";
 }
 
 export const nodes: NodeSection[] = [
@@ -64,5 +66,12 @@ export const nodes: NodeSection[] = [
       </div>
       <p class="panel__note">Con diseño: con foto, para leer o imprimir.<br>ATS: texto simple, para postulaciones online.</p>
     `,
+  },
+  {
+    id: "reconstruir",
+    label: "Reconstruir",
+    code: "RBD-06",
+    action: "rebuild",
+    html: "",
   },
 ];

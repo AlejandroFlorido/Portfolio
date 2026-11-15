@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { nodes } from "../data/nodes";
+import Rebuild from "../components/Rebuild.astro";
 
 const base = import.meta.env.BASE_URL;
 ---
@@ -94,6 +95,8 @@ const base = import.meta.env.BASE_URL;
     <span class="closer__label">Cerrar</span>
   </button>
 
+  <Rebuild />
+
   {
     nodes.map((node) => (
       <template data-content={node.id}>
@@ -111,6 +114,7 @@ const base = import.meta.env.BASE_URL;
     import { createKeeper } from "../scripts/keeper";
     import { createPanelCrew } from "../scripts/panel-crew";
     import { createWorld, hasWebGL } from "../scripts/world3d";
+    import { createRebuilder } from "../scripts/rebuild";
 
     const topo = startTopo(document.getElementById("topo") as HTMLCanvasElement);
     const body = document.body;
@@ -417,6 +421,7 @@ const base = import.meta.env.BASE_URL;
     // Con escena 3D, la cámara primero vuela hasta el nodo y después se abre
     let flying = false;
     async function openPanel(id: string) {
+      if (nodes.find((n) => n.id === id)?.action === "rebuild") return rebuild();
       const index = nodes.findIndex((n) => n.id === id);
       if (world && index >= 0 && !body.classList.contains("has-panel") && !closing) {
         if (flying) return;
@@ -513,6 +518,68 @@ const base = import.meta.env.BASE_URL;
       if (withSound && closedIndex >= 0) window.setTimeout(() => keeper.checkClosed(closedIndex), 350);
     }
 
+    // ---------- Nodo "Reconstruir": apagón y página CV armada por punteros ----------
+    const blackout = document.querySelector<HTMLElement>("[data-blackout]")!;
+    const rbRoot = document.querySelector<HTMLElement>("[data-rb]")!;
+    const rbBack = document.querySelector<HTMLButtonElement>("[data-rb-back]")!;
+    const rebuilder = createRebuilder({
+      root: rbRoot,
+      page: document.querySelector<HTMLElement>("[data-rb-page]")!,
+      back: rbBack,
+    });
+    const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    // Se apagan las luces como un tubo que falla: parpadea y queda a oscuras
+    async function lightsOut() {
+      body.classList.add("is-switching");
+      for (const [o, ms] of [[0.85, 70], [0.2, 90], [1, 60], [0.45, 80], [1, 0]] as const) {
+        blackout.style.transition = "none";
+        blackout.style.opacity = String(o);
+        await pause(ms);
+      }
+      await pause(550);
+    }
+    // Vuelve la luz: aparece el fondo de a poco
+    async function lightsOn() {
+      blackout.style.transition = "opacity 0.9s ease";
+      blackout.style.opacity = "0";
+      topo.pulse(innerWidth / 2, innerHeight / 2, 1);
+      await pause(700);
+      body.classList.remove("is-switching");
+    }
+
+    let rebuilding = false;
+    async function rebuild() {
+      if (rebuilding || closing || !body.classList.contains("is-awake") || body.classList.contains("is-building")) return;
+      rebuilding = true;
+      // Los nodos se desarman como al apagar el núcleo
+      await sleep();
+      closer.leave();
+      sfx.sleep();
+      await lightsOut();
+      body.classList.add("is-rebuild");
+      topo.setIntensity(0.55);
+      await lightsOn();
+      await rebuilder.build();
+    }
+
+    async function backToNodes() {
+      if (!rebuilding || body.classList.contains("is-switching")) return;
+      await rebuilder.unbuild();
+      await lightsOut();
+      body.classList.remove("is-rebuild");
+      await lightsOn();
+      rebuilding = false;
+      wake();
+    }
+    rbBack.addEventListener("click", backToNodes);
+    // Los links de la barra bajan a cada sección dentro de la página reconstruida
+    rbRoot.querySelectorAll<HTMLAnchorElement>('a[href^="#rb-"]').forEach((a) =>
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        rbRoot.querySelector(a.getAttribute("href")!)?.scrollIntoView({ behavior: "smooth" });
+      }),
+    );
+
     // ---------- Eventos ----------
     core.addEventListener("click", () => {
       if (world?.justDragged()) return; // fue un giro, no un clic
@@ -536,7 +603,9 @@ const base = import.meta.env.BASE_URL;
     });
     document.querySelector("[data-panel-close]")!.addEventListener("click", () => closePanel());
     addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closePanel();
+      if (e.key !== "Escape") return;
+      if (body.classList.contains("is-rebuild")) backToNodes();
+      else closePanel();
     });
 
     // Si la URL trae una sección (#proyectos), abrir directamente

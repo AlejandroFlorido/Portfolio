@@ -49,6 +49,7 @@ const POSITIONS: [number, number, number][] = [
   [3.4, -3.3, 2.0], // Habilidades: abajo a la derecha, adelante
   [-4.2, -2.6, -2.8], // Contacto: abajo a la izquierda, al fondo
   [-5.4, 2.0, 0.8], // CV: izquierda
+  [5.2, 4.4, -3.0], // Reconstruir: arriba a la derecha, al fondo
 ];
 const CORE_R = 1.15;
 const NODE_R = 0.46;
