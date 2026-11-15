@@ -195,7 +195,7 @@ body.is-rebuild .rb { display: block; }
 }
 
 /* ---------- Portada ---------- */
-.rb-hero { padding-top: 10px; min-height: calc(100vh - 80px); }
+.rb-hero { padding-top: 10px; }
 .rb-hero__big {
   margin: 0;
   font-family: "Anton", var(--font-display);
@@ -316,7 +316,7 @@ body.is-rebuild .rb { display: block; }
 .rb-index span { font-size: 0.66rem; color: var(--muted); }
 
 /* ---------- Secciones ---------- */
-.rb-sec { padding: 90px 0 20px; scroll-margin-top: 60px; }
+.rb-sec { padding: 56px 0 20px; scroll-margin-top: 60px; }
 .rb-sec__code { margin: 0 0 6px; font-size: 0.7rem; letter-spacing: 0.16em; color: var(--cyan); }
 .rb-sec__title {
   display: inline-block;
@@ -405,5 +405,5 @@ body.is-rebuild .rb { display: block; }
   .rb-hero__big { -webkit-text-stroke-width: 1.4px; margin-top: 8px; }
   .rb-hero__grid { grid-template-columns: 1fr; margin-top: 0; }
   .rb-photo { max-width: 320px; }
-  .rb-sec { padding-top: 60px; }
+  .rb-sec { padding-top: 44px; }
 }
